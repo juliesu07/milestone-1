@@ -10,4 +10,4 @@ iptables -t nat -I OUTPUT -o ens3 -p tcp -m tcp --dport 25 -j DNAT --to-destinat
 ```
 ## Note that iptables commands are not automatically saved on server restart.
 
-## After getting the videos and metadata, run the shell scripts which process the videos and thumbnails.
+After getting the videos and metadata, run the shell scripts which process the videos and thumbnails.
