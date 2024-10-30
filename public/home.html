@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Gallery</title>
+  <style>
+    #videoList {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+    }
+    .videoItem {
+      width: 200px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .thumbnail {
+      width: 100%;
+      height: 120px;
+      background-color: #ddd;
+    }
+    .title {
+      font-weight: bold;
+      margin: 10px 0 5px;
+    }
+    .description {
+      font-size: 0.9em;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h1>Video Gallery</h1>
+  <div id="videoList"></div>
+
+  <script>
+
+    async function loadVideos(count) {
+      try {
+        const response = await fetch('/api/videos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ count })
+        });
+        console.log(response);
+        const data = await response.json();
+	
+        if (data.status === 'OK') {
+          const videoList = document.getElementById('videoList');
+          videoList.innerHTML = ''; // Clear any previous entries
+
+          data.videos.forEach(video => {
+            const videoItem = document.createElement('div');
+            videoItem.classList.add('videoItem');
+            videoItem.onclick = () => {
+                window.location.href = `/play/${video.id}`;
+            };
+            
+            const thumbnail = document.createElement('img');
+            thumbnail.src = `/api/thumbnail/${video.id}`;
+            thumbnail.alt = `${video.metadata.title} Thumbnail`;
+            thumbnail.classList.add('thumbnail');
+
+            const title = document.createElement('div');
+            title.classList.add('title');
+            title.textContent = `${video.metadata.title}`;
+
+            const description = document.createElement('div');
+            description.classList.add('description');
+            description.textContent = `${video.metadata.description}`;
+
+            videoItem.appendChild(thumbnail);
+            videoItem.appendChild(title);
+            videoItem.appendChild(description);
+            videoList.appendChild(videoItem);
+          });
+        } else {
+          console.error('Error fetching videos:', data);
+        }
+      } catch (error) {
+        console.error('Failed to load videos:', error);
+      }
+    }
+   
+    loadVideos(10); // Load videos after checking login status
+   
+
+   </script>
+</body>
+</html>
