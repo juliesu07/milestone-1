@@ -61,6 +61,27 @@ const checkSession = async (req, res, next) => {
     }
 };
 
+const checkSessionVideos = async (req, res, next) => {
+    if (req.session && req.session.userId) {
+        const user = await User.findById(req.session.userId);
+        if (!user) { return res.status(200).json({ status: 'ERROR', error:true, message: "Not valid user" }); }
+        next();
+    } else {
+        /*
+        const isAjaxRequest = req.xhr || req.headers.accept.includes('json');
+
+        if (isAjaxRequest) {
+            // Respond with JSON if it's an AJAX request
+            res.status(200).json({ status: 'ERROR', error: true, message: 'Not logged in' });
+        } else {
+            // Redirect to login page if it's a standard request
+            res.redirect('/login');
+        }*/
+        res.status(200).json({ status: 'ERROR', error: true, message: 'Not logged in' });
+    }
+};
+
+
 app.get('/', checkSession, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'home.html')); // Serve the dashboard-homepage
 });
@@ -102,7 +123,7 @@ app.get('/play/:id', (req, res) => {
 // Routes
 app.use('/api', userRoutes);
 app.use('/api', authRoutes);
-app.use('/api', checkSession, videoRoutes);
+app.use('/api', checkSessionVideos, videoRoutes);
 
 // Start the server
 app.listen(PORT, () => {
