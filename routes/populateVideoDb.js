@@ -14,33 +14,32 @@ mongoose.connect('mongodb://localhost:27017/milestone-1', {
     console.error("Error connecting to MongoDB:", error);
 });
 
-async function initializeCounter() {
-    const counterExists = await Counter.exists({ _id: 'video_id' });
-    if (!counterExists) {
-        await Counter.create({ _id: 'video_id', sequence_value: 0 });
-    }
-}
+// async function initializeCounter() {
+//     const counterExists = await Counter.exists({ _id: 'video_id' });
+//     if (!counterExists) {
+//         await Counter.create({ _id: 'video_id', sequence_value: 0 });
+//     }
+// }
 
-initializeCounter();
+// initializeCounter();
 
-async function getNextVideoId() {
-    const counter = await Counter.findByIdAndUpdate(
-        'video_id',
-        { $inc: { sequence_value: 1 } },
-        { new: true, upsert: true } // Return updated counter and create if it doesn't exist
-    );
-    return counter.sequence_value;
-}
+// async function getNextVideoId() {
+//     const counter = await Counter.findByIdAndUpdate(
+//         'video_id',
+//         { $inc: { sequence_value: 1 } },
+//         { new: true, upsert: true } // Return updated counter and create if it doesn't exist
+//     );
+//     return counter.sequence_value;
+// }
 
 // Function to scan directory and add videos to the database
 async function addVideosToDatabase() {
     try {
         const videoEntries = Object.entries(videoData);
         for (let [title, description] of videoEntries) {
-            const videoId = await getNextVideoId(); // Await here to get the ID
+            // const videoId = await getNextVideoId(); // Await here to get the ID
 
             const video = {
-                _id: videoId,
                 title: title,
                 description: description,
                 status: "complete",

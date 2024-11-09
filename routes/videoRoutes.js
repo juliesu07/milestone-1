@@ -144,6 +144,7 @@ router.post('/like', async (req, res) => {
   const { id: videoId, value } = req.body;
   const userId = req.session.userId;
 
+  try {
     // Fetch the user and video
     const user = await User.findById(userId);
     const video = await Video.findById(videoId);
@@ -188,6 +189,13 @@ router.post('/like', async (req, res) => {
     await Video.findByIdAndUpdate(videoId, updateVideo);
 
     res.status(200).json({ status: 'OK', likes: video.like });
+  } catch (err) {
+    res.status(200).json({
+      status: 'ERROR',
+      error: true,
+      message: err.message
+    });
+  }
 });
 
 module.exports = router;
