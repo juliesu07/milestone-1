@@ -49,7 +49,7 @@ async function addVideosToDatabase() {
 
             const newVideo = new Video(video);
             await newVideo.save();
-            console.log(`Added video: ${video.title} with ID: ${videoId}`);
+            console.log(`Added video: ${video.title} with ID: ${video.id}`);
         }
     } catch (error) {
         console.error("Error adding videos:", error);
