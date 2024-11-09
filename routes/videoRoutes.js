@@ -10,60 +10,6 @@ const Video = require('../models/Video');
 const User = require('../models/User');
 const { ObjectId } = require('mongoose').Types;
 
-router.post('/like', async (req, res) => {
-  const { id: videoId, value } = req.body;
-  console.log(videoId + " | " + value);
-  const userId = req.session.userId;
-  console.log(userId);
-
-  try {
-    const user = await User.findById(userId);
-    const video = await Video.findById(videoId);
-    const objectIdVideoId = new ObjectId(videoId);  // Cast videoId to ObjectId
-    const liked = user.liked.includes(objectIdVideoId);
-    const disliked = user.disliked.includes(objectIdVideoId);
-
-    console.log('called');
-
-    if ((value && liked) || (!value && disliked)) {
-      return res.status(200).json({
-        status: 'ERROR', error: true, message: "The value that you want to set is the same"
-      });
-    }
-
-    if (value) {
-      if (disliked) {
-        user.disliked.pull(objectIdVideoId);
-        video.dislike -= 1;
-      }
-      user.liked.push(objectIdVideoId);
-      video.like += 1;
-    } else {
-      if (liked) {
-        user.liked.pull(objectIdVideoId);
-        video.like -= 1;
-      }
-      user.disliked.push(objectIdVideoId);
-      video.dislike += 1;
-    }
-
-    console.log(video.like);
-    console.log(user.liked);
-
-    await user.save();
-    await video.save();
-
-    res.status(200).json({ status: 'OK', likes: video.like });
-  } catch (err) {
-    res.status(200).json({
-      status: 'ERROR',
-      error: true,
-      message: 'An error occurred when updating likes'
-    });
-  }
-});
-
-
 // Get count number of video entires
 router.post('/videos', async (req, res) => {
   const { count} = req.body;
