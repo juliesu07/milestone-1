@@ -143,13 +143,20 @@ router.post('/view', async (req, res) => {
 router.post('/like', async (req, res) => {
   const { id: videoId, value } = req.body;
   const userId = req.session.userId;
-
   try {
     const user = await User.findById(userId);
     const video = await Video.findById(videoId);
 
+    // Initialize if undefined
+    if (!user.liked) user.liked = [];
+    if (!user.disliked) user.disliked = [];
+    if (video.like === undefined) video.like = 0;
+    if (video.dislike === undefined) video.dislike = 0;
+
     const liked = user.liked.includes(videoId);
     const disliked = user.disliked.includes(videoId);
+
+    console.log('called')
 
     if ((value && liked) || (!value && disliked)) {
       return res.status(200).json({
@@ -157,16 +164,12 @@ router.post('/like', async (req, res) => {
       });
     }
 
-    console.log(user.liked);
-    console.log(video.like);
-    
     if (value) {
       if (disliked) {
         user.disliked.pull(videoId);
         video.dislike -= 1;
       }
       user.liked.push(videoId);
-      user.markModified('liked');
       video.like += 1;
     } else {
       if (liked) {
@@ -174,22 +177,21 @@ router.post('/like', async (req, res) => {
         video.like -= 1;
       }
       user.disliked.push(videoId);
-      user.markModified('disliked');
       video.dislike += 1;
     }
 
-    console.log(user.liked);
     console.log(video.like);
+    console.log(user.liked);
 
     await user.save();
     await video.save();
 
     res.status(200).json({ status: 'OK', likes: video.like });
   } catch (err) {
-    res.status(500).json({
+    res.status(200).json({
       status: 'ERROR',
       error: true,
-      message: 'An error occurred when updating likes',
+      message: 'An error occurred when updating likes'
     });
   }
 });
