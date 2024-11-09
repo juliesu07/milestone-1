@@ -18,8 +18,8 @@ router.post('/videos', async (req, res) => {
   try {
     const videoEntries = await Video.find({}).limit(count);
     const user = await User.findById(userId);
-    const videos = videoEntries.map(({id, description, title, like}) => ({
-      id: id,
+    const videos = videoEntries.map(({_id, description, title, like}) => ({
+      id: _id,
       description: description,
       title: title,
       watched: user.watched.includes(_id),
