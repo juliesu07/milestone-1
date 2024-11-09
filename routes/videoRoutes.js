@@ -148,7 +148,7 @@ router.post('/like', async (req, res) => {
   try {
     const user = await User.findById(userId);
     const video = await Video.findById(videoId);
-    const objectIdVideoId = Types.ObjectId.createFromHexString(id);
+    const objectIdVideoId = Types.ObjectId.createFromHexString(videoId);
     const liked = user.liked.includes(objectIdVideoId);
     const disliked = user.disliked.includes(objectIdVideoId);
 
