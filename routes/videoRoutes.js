@@ -97,7 +97,6 @@ router.get('/manifest/:id', async (req, res) => {
 
 // GET /thumbnail/:id - Send thumbnail for video with id :id
 router.get('/thumbnail/:id', async (req, res) => {
-    // console.log(req.body);
     const videoId = req.params.id;
     try
     {
