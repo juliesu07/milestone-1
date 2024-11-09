@@ -20,7 +20,7 @@ router.post('/videos', async (req, res) => {
     const videoEntries = await Video.find({}).limit(count);
     const user = await User.findById(userId);
     const videos = videoEntries.map(({_id, description, title, like}) => ({
-      id: String(_id),
+      id: _id,
       description: description,
       title: title,
       watched: user.watched.includes(_id),
@@ -142,13 +142,13 @@ router.post('/view', async (req, res) => {
 });
 
 router.post('/like', async (req, res) => {
-  const { id: videoId, value } = req.body;
+  const { id: objectIdVideoId, value } = req.body;
   const userId = req.session.userId;
 
   try {
     const user = await User.findById(userId);
-    const video = await Video.findById(videoId);
-    const objectIdVideoId = Types.ObjectId.createFromHexString(videoId);
+    const video = await Video.findById(objectIdVideoId);
+    // const objectIdVideoId = Types.ObjectId.createFromHexString(videoId);
     const liked = user.liked.includes(objectIdVideoId);
     const disliked = user.disliked.includes(objectIdVideoId);
 
