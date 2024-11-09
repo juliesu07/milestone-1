@@ -7,8 +7,8 @@
 </head>
 <body>
     <h1>Upload Video</h1>
-    <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
-	<input type="file" name="video" accept="video/mp4" id="videoInput" required>
+    <form id="uploadForm" action="http://130.245.136.220/api/upload" method="POST" enctype="multipart/form-data">
+        <input type="file" name="video" accept="video/mp4" id="videoInput" required>
         <input type="text" name="author" placeholder="Author" required>
         <input type="text" name="title" placeholder="Video Title" required>        
         <button type="submit">Upload Video</button>
@@ -17,7 +17,7 @@
     <video id="video-preview" controls></video>
 
     <script>
-	// JavaScript to preview the selected video
+        // JavaScript to preview the selected video
         const videoInput = document.getElementById('videoInput');
         const videoPreview = document.getElementById('video-preview');
 
