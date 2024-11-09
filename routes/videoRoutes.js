@@ -15,19 +15,8 @@ router.post('/videos', async (req, res) => {
   const userId = req.session.userId;
   // PLEASE READ add ml library, im just editing the format of the json 
 
-
-  // const videoEntries = Object.entries(videoData);
-  // const videos = videoEntries.slice(0, count).map(([title, description]) => ({
-  //   id: title.endsWith('.mp4') ? title.slice(0, -4) : title,
-  //   metadata: {
-  //     title,
-  //     description,
-  //   },
-  // }));
   try {
     const videoEntries = await Video.find({}).limit(count);
-    // console.log("hello, i am vidoe entries");
-    // console.log(videoEntries);
     const user = await User.findById(userId);
     const videos = videoEntries.map(({_id, description, title, like}) => ({
       id: String(_id),
@@ -153,37 +142,34 @@ router.post('/view', async (req, res) => {
 
 router.post('/like', async (req, res) => {
   const {id:videoId, value} = req.body;
+  console.log(videoId + " | " + value);
   const userId = req.session.userId;
+  console.log(userId);
   try
   {
     const user = await User.findById(userId);
     const video = await Video.findById(videoId);
     const liked = user.liked.includes(videoId);
     const disliked = user.disliked.includes(videoId);
-  
-    if ((value && liked) || (!value && disliked))
-    {
+    
+    console.log('called')
+    
+    if ((value && liked) || (!value && disliked)) {
       return res.status(200).json({
-          status: 'ERROR',
-          error: true,
-          message: "The value that you want to set is the same"
+        status: 'ERROR', error: true, message: "The value that you want to set is the same"
       });
     }
-  
-    if (value)
-    {
-      if (disliked)
-      {
+    
+    
+    if (value) {
+      if (disliked) {
         user.disliked.pull(videoId);
         video.dislike -= 1;
       }
       user.liked.push(videoId);
       video.like += 1
-    }
-    else
-    {
-      if (liked)
-      {
+    } else {
+      if (liked) {
         user.liked.pull(videoId);
         video.like -= 1;
       }
@@ -194,10 +180,7 @@ router.post('/like', async (req, res) => {
     await user.save();
     await video.save();
   
-    res.status(200).json({
-      status: 'OK',
-      likes: video.like
-    });
+    res.status(200).json({ status: 'OK', likes: video.like });
   }
   catch(err)
   {

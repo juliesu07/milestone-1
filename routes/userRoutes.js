@@ -85,46 +85,6 @@ router.get('/verify', async (req, res) => {
   }
 });
 
-/*
-// Login
-router.post('/login', async (req, res) => {
-  console.log("help posted");
-  const { username, password } = req.body;
-  try {
-    const user = await User.findOne({ username });
-    if (!user) {
-      return res.status(200).json({ status: 'ERROR', error:true, message: 'User not found' });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(200).json({ status: 'ERROR', error:true, message: 'Invalid password' });
-    }
-
-    if (!user.verified) {
-      return res.status(200).json({ status: 'ERROR', error:true, message: 'Email not verified' });
-    }
-
-    req.session.userId = user._id; // Save user ID in session
-    //res.setHeader('X-CSE356', '66d3bf5c07c8cc8548463db5');
-    res.status(200).json({ status: 'OK', message: 'Login successful' });
-  } catch (error) {
-    //res.setHeader('X-CSE356', '66d3bf5c07c8cc8548463db5');
-    res.status(200).json({ status: 'ERROR', error:true, message: error.message });
-  }
-});
-
-// Logout user
-router.post('/logout', (req, res) => {
-  req.session.destroy(err => {
-    if (err) {
-      return res.status(200).json({ status: 'ERROR', error:true, message: err.message });
-    }
-    res.status(200).json({ status: 'OK', message: 'Logout successful' });
-  });
-});
-*/
-
 router.get('/session', async (req, res) => {
   if (req.session && req.session.userId) {
     const user = await User.findById(req.session.userId);
