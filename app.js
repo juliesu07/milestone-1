@@ -7,6 +7,7 @@ const MongoStore = require('connect-mongo');
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
 const videoRoutes = require('./routes/videoRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 const path = require('path'); // Import the path module
 const User = require('./models/User');
 const Video = require('./models/Video');
@@ -162,6 +163,7 @@ app.get('/upload', (req, res) => {
 app.use('/api', userRoutes);
 app.use('/api', authRoutes);
 app.use('/api', checkSessionVideos, videoRoutes);
+app.use('/api', checkSessionVideos, uploadRoutes);
 
 // Start the server
 app.listen(PORT, () => {
