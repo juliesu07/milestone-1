@@ -142,43 +142,52 @@ router.post('/view', async (req, res) => {
 });
 
 router.post('/like', async (req, res) => {
-  const { id: objectIdVideoId, value } = req.body;
+  const { id: videoId, value } = req.body;
   const userId = req.session.userId;
 
   try {
+    // Fetch the user and video
     const user = await User.findById(userId);
-    const video = await Video.findById(objectIdVideoId);
-    // const objectIdVideoId = Types.ObjectId.createFromHexString(videoId);
-    const liked = user.liked.includes(objectIdVideoId);
-    const disliked = user.disliked.includes(objectIdVideoId);
+    const video = await Video.findById(videoId);
+    const liked = user.liked.includes(videoId);
+    const disliked = user.disliked.includes(videoId);
 
+    // Check if the value is the same as the current like/dislike status
     if ((value && liked) || (!value && disliked)) {
       return res.status(200).json({
-        status: 'ERROR', error: true, message: "The value that you want to set is the same"
+        status: 'ERROR',
+        error: true,
+        message: "The value that you want to set is the same"
       });
     }
 
+    const updateUser = {};
+    const updateVideo = {};
+
+    // Handle like action
     if (value) {
       if (disliked) {
-        user.disliked.pull(objectIdVideoId);
-        video.dislike -= 1;
+        // Remove from dislikes if already disliked
+        updateUser.$pull = { disliked: videoId };
+        updateVideo.$inc = { dislike: -1 };
       }
-      user.liked.push(objectIdVideoId);
-      video.like += 1;
+      // Add to liked
+      updateUser.$addToSet = { liked: videoId };
+      updateVideo.$inc = { like: 1 };
     } else {
       if (liked) {
-        user.liked.pull(objectIdVideoId);
-        video.like -= 1;
+        // Remove from likes if already liked
+        updateUser.$pull = { liked: videoId };
+        updateVideo.$inc = { like: -1 };
       }
-      user.disliked.push(objectIdVideoId);
-      video.dislike += 1;
+      // Add to disliked
+      updateUser.$addToSet = { disliked: videoId };
+      updateVideo.$inc = { dislike: 1 };
     }
 
-    console.log(video.like);
-    console.log(user.liked);
-
-    await user.save();
-    await video.save();
+    // Update user and video with atomic operations
+    await User.findByIdAndUpdate(userId, updateUser);
+    await Video.findByIdAndUpdate(videoId, updateVideo);
 
     res.status(200).json({ status: 'OK', likes: video.like });
   } catch (err) {
@@ -189,6 +198,7 @@ router.post('/like', async (req, res) => {
     });
   }
 });
+
 
 
 module.exports = router;
