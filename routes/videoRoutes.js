@@ -143,7 +143,7 @@ router.post('/view', async (req, res) => {
 
 router.post('/like', async (req, res) => {
   const { id, value } = req.body;
-  const videoId = new ObjectId(id);
+  const videoId = new Number(id);
   const userId = req.session.userId;
 
   try {
@@ -166,6 +166,8 @@ router.post('/like', async (req, res) => {
         status: 'ERROR', error: true, message: "The value that you want to set is the same"
       });
     }
+    
+    videoId = new ObjectId(videoId);
 
     if (value) {
       if (disliked) {
