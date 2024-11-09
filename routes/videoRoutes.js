@@ -142,45 +142,35 @@ router.post('/view', async (req, res) => {
 });
 
 router.post('/like', async (req, res) => {
-  const { videoId, value } = req.body;
+  const { id: videoId, value } = req.body;
   const userId = req.session.userId;
 
   try {
     const user = await User.findById(userId);
     const video = await Video.findById(videoId);
-
-    // Initialize if undefined
-    if (!user.liked) user.liked = [];
-    if (!user.disliked) user.disliked = [];
-    if (video.like === undefined) video.like = 0;
-    if (video.dislike === undefined) video.dislike = 0;
-
-    const liked = user.liked.includes(videoId);
-    const disliked = user.disliked.includes(videoId);
-
-    console.log('called')
+    const objectIdVideoId = new ObjectId(videoId);  // Cast videoId to ObjectId
+    const liked = user.liked.includes(objectIdVideoId);
+    const disliked = user.disliked.includes(objectIdVideoId);
 
     if ((value && liked) || (!value && disliked)) {
       return res.status(200).json({
         status: 'ERROR', error: true, message: "The value that you want to set is the same"
       });
     }
-    
-    videoId = new ObjectId(videoId);
 
     if (value) {
       if (disliked) {
-        user.disliked.pull(videoId);
+        user.disliked.pull(objectIdVideoId);
         video.dislike -= 1;
       }
-      user.liked.push(videoId);
+      user.liked.push(objectIdVideoId);
       video.like += 1;
     } else {
       if (liked) {
-        user.liked.pull(videoId);
+        user.liked.pull(objectIdVideoId);
         video.like -= 1;
       }
-      user.disliked.push(videoId);
+      user.disliked.push(objectIdVideoId);
       video.dislike += 1;
     }
 
