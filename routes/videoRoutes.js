@@ -200,4 +200,34 @@ router.post('/like', async (req, res) => {
   }
 });
 
+router.get('/processing-status', async (req, res) => {
+    const userId = req.session.userId;
+    try
+    {
+      const user = await User.findById(userId);
+      const videoIds = user.videos;
+      const videos = [];
+      for (let i = 0; i < videoIds.length; i++)
+      {
+        const videoStats = await Video.findById(videoIds[i]);
+        let video = {
+          id: videoStats.id,
+          title: videoStats.title,
+          status: videoStats.status
+        }
+        videos.push(video);
+      }
+      return res.status(200).json({ status: 'OK', videos: videos })
+    }
+    catch (err)
+    {
+      res.status(200).json({
+        status: 'ERROR',
+        error: true,
+        message: err.message
+      });
+    }
+
+});
+
 module.exports = router;
