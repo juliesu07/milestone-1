@@ -165,6 +165,13 @@
             } else {
                 videoPlayer.pause();
                 playPauseBtn.textContent = 'Play';
+                fetch('/api/view', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ id: currentVideoId })
+                });
             }
         });
 
