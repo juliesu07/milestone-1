@@ -122,8 +122,8 @@ router.get('/thumbnail/:id', async (req, res) => {
 });
 
 router.post('/view', async (req, res) => {
-  const { id:videoId } = req.body;
-  console.log(id);
+  const { id: videoId } = req.body;
+  console.log(videoId);
   const userId = req.session.userId;
   const user = await User.findById(userId);
   const viewed = user.watched.includes(videoId);
