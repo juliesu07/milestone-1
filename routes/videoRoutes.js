@@ -176,7 +176,10 @@ router.post('/like', async (req, res) => {
       user.disliked.push(videoId);
       video.dislike += 1;
     }
-  
+    
+    console.log(video.like);
+    console.log(user.liked);
+    
     await user.save();
     await video.save();
   
