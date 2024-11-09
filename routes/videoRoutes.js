@@ -191,7 +191,7 @@ router.post('/like', async (req, res) => {
     res.status(200).json({
       status: 'ERROR',
       error: true,
-      message: 'An error occurred when updating likes'
+      message: err.message
     });
   }
 });
