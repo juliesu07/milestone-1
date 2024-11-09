@@ -52,6 +52,9 @@
           videoList.innerHTML = ''; // Clear any previous entries
 
           data.videos.forEach(video => {
+            const prevVideoId = video.title.endsWith('.mp4') ? video.title.slice(0, -4) : video.title;
+            console.log(prevVideoId);
+            console.log(video.id);
             const videoItem = document.createElement('div');
             videoItem.classList.add('videoItem');
             videoItem.onclick = () => {
@@ -60,16 +63,17 @@
             
             const thumbnail = document.createElement('img');
             thumbnail.src = `/api/thumbnail/${video.id}`;
-            thumbnail.alt = `${video.metadata.title} Thumbnail`;
+            //console.log(thumbnail.src);
+            thumbnail.alt = `${video.title} Thumbnail`;
             thumbnail.classList.add('thumbnail');
 
             const title = document.createElement('div');
             title.classList.add('title');
-            title.textContent = `${video.metadata.title}`;
+            title.textContent = `${video.title}`;
 
             const description = document.createElement('div');
             description.classList.add('description');
-            description.textContent = `${video.metadata.description}`;
+            description.textContent = `${video.description}`;
 
             videoItem.appendChild(thumbnail);
             videoItem.appendChild(title);

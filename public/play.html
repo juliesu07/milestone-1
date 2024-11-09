@@ -64,6 +64,8 @@
         <video id="videoPlayer" autoplay muted></video>
         <div id="controls">
             <div id="playPauseBtn">Pause</div>
+            <button id = 'likeBtn'>Like</button>
+            <button id = 'dislikeBtn'>Dislike</button>
         </div>
         <div id="error" style="display: none;"></div>
     </div>
@@ -78,6 +80,8 @@
         function loadVideo(id) {
             const mediaUrl = `http://130.245.136.220/media/${id}.mpd`;
             const player = dashjs.MediaPlayer().create();
+            player.setProtectionData({});
+            console.log(mediaUrl);
             player.initialize(videoPlayer, mediaUrl, true); // Autoplay new video
             player.on('error', (e) => {
                 console.error('Error occurred: ', e);
@@ -128,6 +132,30 @@
                 console.log("No previous video in history.");
             }
         }
+
+        document.getElementById('likeBtn').addEventListener('click', async (e) => {
+            e.preventDefault();
+
+            const response = await fetch('/api/like', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: currentVideoId, value: true })
+            });
+        })
+
+        document.getElementById('dislikeBtn').addEventListener('click', async (e) => {
+            e.preventDefault();
+
+            const response = await fetch('/api/like', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({id: currentVideoId, value: false})
+            });
+        })
 
         // Play/Pause button functionality
         playPauseBtn.addEventListener('click', () => {

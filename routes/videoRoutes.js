@@ -6,23 +6,50 @@ const path = require('path');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 ffmpeg.setFfmpegPath(ffmpegPath);
+const Video = require('../models/Video');
+const User = require('../models/User');
 
 // Get count number of video entires
-router.post('/videos', (req, res) => {
-  const { count } = req.body;
-  const videoEntries = Object.entries(videoData);
-  const videos = videoEntries.slice(0, count).map(([title, description]) => ({
-    id: title.endsWith('.mp4') ? title.slice(0, -4) : title,
-    metadata: {
-      title,
-      description,
-    },
-  }));
+router.post('/videos', async (req, res) => {
+  const { count} = req.body;
+  const userId = req.session.userId;
+  // PLEASE READ add ml library, im just editing the format of the json 
 
-  return res.json({
-    status: 'OK',
-    videos,
-  });
+
+  // const videoEntries = Object.entries(videoData);
+  // const videos = videoEntries.slice(0, count).map(([title, description]) => ({
+  //   id: title.endsWith('.mp4') ? title.slice(0, -4) : title,
+  //   metadata: {
+  //     title,
+  //     description,
+  //   },
+  // }));
+  try {
+    const videoEntries = await Video.find({}).limit(count);
+    // console.log("hello, i am vidoe entries");
+    // console.log(videoEntries);
+    const user = await User.findById(userId);
+    const videos = videoEntries.map(({_id, description, title, like}) => ({
+      id: String(_id),
+      description: description,
+      title: title,
+      watched: user.watched.includes(_id),
+      liked: user.liked.includes(_id),
+      likevalues: like,
+    }));
+
+    return res.json({
+      status: 'OK',
+      videos,
+    });
+  }
+  catch (err) {
+    console.log(err);
+    res.status(500).json({
+      status: 'Error',
+      message: "Blame Anna for not being able to retrieve videos",
+    });
+  }
 });
 
 // Send Random Video that does not match eid
@@ -51,31 +78,136 @@ router.get('/randvideo/:eid', (req, res) => {
 });
 
 // GET /manifest/:id - Send DASH manifest for video with id :id
-router.get('/manifest/:id', (req, res) => {
+router.get('/manifest/:id', async (req, res) => {
     const videoId = req.params.id;
+    try
+    {
+      const video = await Video.findById(videoId);
+      const title = video.title.endsWith('.mp4') ? video.title.slice(0, -4) : video.title;
+      // console.log(title);
+      const manifestPath = path.join(__dirname, '../media', `${title}.mpd`);
+  
+      res.sendFile(manifestPath, err => {
+          if (err) {
+              res.status(err.status).end();
+          }
+      });
 
+    }
+    catch (err)
+    {
+      res.status(200).json({
+        status: 'ERROR',
+        error: true,
+        message: 'An error occurred when updatin likes'
+      })
+    }
     // Construct the manifest path based on the presence of a file type
-    const manifestPath = path.join(__dirname, '../media', `${videoId}.mpd`);
-
-    res.sendFile(manifestPath, err => {
-        if (err) {
-            res.status(err.status).end();
-        }
-    });
 });
 
 
 // GET /thumbnail/:id - Send thumbnail for video with id :id
-router.get('/thumbnail/:id', (req, res) => {
+router.get('/thumbnail/:id', async (req, res) => {
+    // console.log(req.body);
     const videoId = req.params.id;
-    const thumbnailPath = path.join(__dirname, '../thumbnails', `${videoId}.jpg`); // Adjust based on your video naming convention
-    
-    res.sendFile(thumbnailPath, err => {
-        if (err) {
-            res.status(err.status).end();
-        }
-    });
+    try
+    {
+      const video = await Video.findById(videoId)
+      const title = video.title.endsWith('.mp4') ? video.title.slice(0, -4) : video.title;
+      const thumbnailPath = path.join(__dirname, '../thumbnails', `${title}.jpg`); // Adjust based on your video naming convention
+      
+      res.sendFile(thumbnailPath, err => {
+          if (err) {
+              res.status(err.status).end();
+          }
+      });
+    }
+    catch (err)
+    {
+      res.status(200).json({
+        status: 'ERROR',
+        error: true,
+        message: 'An error occurred when updatin likes'
+      })
+    }
 
 });
+
+router.post('/view', async (req, res) => {
+  const { id:videoId } = req.body;
+  const userId = req.session.userId;
+  const user = await User.findById(userId);
+  const viewed = user.watched.includes(videoId);
+
+  if (!viewed)
+  {
+    user.watched.push(videoId);
+    await user.save();
+  }
+
+  return res.json({
+    status: 'OK',
+    viewed: viewed,
+  });
+});
+
+router.post('/like', async (req, res) => {
+  const {id:videoId, value} = req.body;
+  const userId = req.session.userId;
+  try
+  {
+    const user = await User.findById(userId);
+    const video = await Video.findById(videoId);
+    const liked = user.liked.includes(videoId);
+    const disliked = user.disliked.includes(videoId);
+  
+    if ((value && liked) || (!value && disliked))
+    {
+      return res.status(200).json({
+          status: 'ERROR',
+          error: true,
+          message: "The value that you want to set is the same"
+      });
+    }
+  
+    if (value)
+    {
+      if (disliked)
+      {
+        user.disliked.pull(videoId);
+        video.dislike -= 1;
+      }
+      user.liked.push(videoId);
+      video.like += 1
+    }
+    else
+    {
+      if (liked)
+      {
+        user.liked.pull(videoId);
+        video.like -= 1;
+      }
+      user.disliked.push(videoId);
+      video.dislike += 1;
+    }
+  
+    await user.save();
+    await video.save();
+  
+    res.status(200).json({
+      status: 'OK',
+      likes: video.like
+    });
+  }
+  catch(err)
+  {
+    res.status(200).json({
+      status: 'ERROR',
+      error: true,
+      message: 'An error occurred when updatin likes'
+    })
+  }
+
+})
 
 module.exports = router;
