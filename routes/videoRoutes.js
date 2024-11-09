@@ -141,7 +141,8 @@ router.post('/view', async (req, res) => {
 });
 
 router.post('/like', async (req, res) => {
-  const { id: videoId, value } = req.body;
+  const { id, value } = req.body;
+  const videoId = Number(id);
   const userId = req.session.userId;
   try {
     const user = await User.findById(userId);
