@@ -81,13 +81,20 @@
             const mediaUrl = `http://130.245.136.220/media/${id}.mpd`;
             const player = dashjs.MediaPlayer().create();
             player.setProtectionData({});
-            console.log(mediaUrl);
+            
+            // console.log(mediaUrl);
+
             player.initialize(videoPlayer, mediaUrl, true); // Autoplay new video
+            fetch('/api/view', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: currentVideoId })
+            });
+
             player.on('error', (e) => {
                 console.error('Error occurred: ', e);
                 errorDiv.textContent = 'Failed to load video. Please try again later.';
                 errorDiv.style.display = 'block';
             });
+
             playPauseBtn.textContent = 'Pause';
             currentVideoId = id; // Update current video ID
             setScrollToMiddle(); // Set scroll position to middle when loading a new video
@@ -162,13 +169,6 @@
             if (videoPlayer.paused) {
                 videoPlayer.play();
                 playPauseBtn.textContent = 'Pause';
-                fetch('/api/view', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ id: currentVideoId })
-                });
             } else {
                 videoPlayer.pause();
                 playPauseBtn.textContent = 'Play';
