@@ -8,7 +8,7 @@ const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 ffmpeg.setFfmpegPath(ffmpegPath);
 const Video = require('../models/Video');
 const User = require('../models/User');
-const { ObjectId } = require('mongoose').Types;
+const { Types } = require('mongoose');
 
 // Get count number of video entires
 router.post('/videos', async (req, res) => {
@@ -148,7 +148,7 @@ router.post('/like', async (req, res) => {
   try {
     const user = await User.findById(userId);
     const video = await Video.findById(videoId);
-    const objectIdVideoId = new ObjectId(videoId);  // Cast videoId to ObjectId
+    const objectIdVideoId = Types.ObjectId.createFromHexString(id);
     const liked = user.liked.includes(objectIdVideoId);
     const disliked = user.disliked.includes(objectIdVideoId);
 
