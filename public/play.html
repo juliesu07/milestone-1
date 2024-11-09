@@ -162,9 +162,6 @@
             if (videoPlayer.paused) {
                 videoPlayer.play();
                 playPauseBtn.textContent = 'Pause';
-            } else {
-                videoPlayer.pause();
-                playPauseBtn.textContent = 'Play';
                 fetch('/api/view', {
                     method: 'POST',
                     headers: {
@@ -172,6 +169,9 @@
                     },
                     body: JSON.stringify({ id: currentVideoId })
                 });
+            } else {
+                videoPlayer.pause();
+                playPauseBtn.textContent = 'Play';
             }
         });
 
