@@ -142,8 +142,7 @@ router.post('/view', async (req, res) => {
 });
 
 router.post('/like', async (req, res) => {
-  const { id, value } = req.body;
-  const videoId = new Number(id);
+  const { videoId, value } = req.body;
   const userId = req.session.userId;
 
   try {
