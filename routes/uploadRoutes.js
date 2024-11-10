@@ -24,14 +24,12 @@ const storage = multer.diskStorage({
     }
 });
 
-// Define file size and type limits for safety
+// Define file type limits for safety
 const upload = multer({ 
     storage: storage,
     fileFilter: (req, file, cb) => {
         const allowedTypes = ['video/mp4'];  // Add any other types you want to support
-        if (!allowedTypes.includes(file.mimetype)) {
-            return cb(new Error('Invalid file type, only MP4, MKV, or WEBM allowed'));
-        }
+        if (!allowedTypes.includes(file.mimetype)) { return cb(new Error('Invalid file type, only MP4')); }
         cb(null, true);
     }
 }).single('mp4File');
@@ -104,8 +102,7 @@ async function processVideo(inputPath, videoId) {
       const outputPath = path.join(outputDir, `${videoId}.mpd`);
 
       // Set up the FFmpeg command to generate the DASH (adaptive bitrate) streams
-      ffmpeg(inputPath)
-      .videoFilters([
+      ffmpeg(inputPath).videoFilters([
           {
               filter: 'scale',
               options: {
@@ -123,8 +120,7 @@ async function processVideo(inputPath, videoId) {
                   color: 'black'
               }
           }
-      ])
-      .outputOptions([
+      ]).outputOptions([
           '-map', '0:v', '-b:v:0', '254k', '-s:v:0', '320x180',
           '-map', '0:v', '-b:v:1', '507k', '-s:v:1', '320x180',
           '-map', '0:v', '-b:v:2', '759k', '-s:v:2', '480x270',
@@ -140,12 +136,10 @@ async function processVideo(inputPath, videoId) {
           '-adaptation_sets', 'id=0,streams=v',
           '-init_seg_name', `${videoId}_init_$RepresentationID$.m4s`,
           '-media_seg_name', `${videoId}_chunk_$Bandwidth$_$Number$.m4s`
-      ])
-      .on('end', () => {
+      ]).on('end', () => {
           console.log('Video processing complete');
           resolve();
-      })
-      .on('error', (err) => {
+      }).on('error', (err) => {
           console.error('Error processing video:', err);
           reject(err);
       })
@@ -159,29 +153,17 @@ async function generateThumbnail(inputPath, videoId) {
         const thumbnailDir = path.resolve(__dirname, '..', 'thumbnails');
         const thumbnailPath = path.join(thumbnailDir, `${videoId}.jpg`);
 
-        ffmpeg(inputPath)
-            .on('end', () => {
-                console.log('Thumbnail generation complete');
-                // Update the video status to "complete"
-                Video.findByIdAndUpdate(videoId, { status: 'complete' }, (err) => {
-                    if (err) {
-                        console.error('Error updating video status:', err);
-                        reject(err);
-                    } else {
-                        resolve();
-                    }
-                });
-            })
-            .on('error', (err) => {
-                console.error('Error generating thumbnail:', err);
-                reject(err);
-            })
-            .screenshots({
-                timestamps: ['00:00:00.000'],
-                filename: `${videoId}.jpg`,
-                folder: thumbnailDir,
-                size: '320x180',
-            });
+        ffmpeg(inputPath).on('end', () => {
+            console.log('Thumbnail generation complete');
+        }).on('error', (err) => {
+            console.error('Error generating thumbnail:', err);
+            reject(err);
+        }).screenshots({
+            timestamps: ['00:00:00.000'],
+            filename: `${videoId}.jpg`,
+            folder: thumbnailDir,
+            size: '320x180',
+        });
     });
 }
 
