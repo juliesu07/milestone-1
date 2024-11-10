@@ -1,7 +1,6 @@
 // routes/videoRoutes.js
 const express = require('express');
 const router = express.Router();
-const videoData = require('../videos/m1.json');
 const path = require('path');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;

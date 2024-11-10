@@ -1,4 +1,4 @@
-// routes/user.js
+// routes/userRoutes.js
 const express = require('express');
 const User = require('../models/User');
 const nodemailer = require('nodemailer');

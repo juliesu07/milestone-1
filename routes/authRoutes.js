@@ -1,4 +1,4 @@
-// routes/user.js
+// routes/authRoutes.js
 const express = require('express');
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
