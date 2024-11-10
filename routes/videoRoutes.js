@@ -98,27 +98,14 @@ router.get('/manifest/:id', async (req, res) => {
 // GET /thumbnail/:id - Send thumbnail for video with id :id
 router.get('/thumbnail/:id', async (req, res) => {
     const videoId = req.params.id;
-    try
-    {
-      const video = await Video.findById(videoId)
-      const title = video.title.endsWith('.mp4') ? video.title.slice(0, -4) : video.title;
-      const thumbnailPath = path.join(__dirname, '../thumbnails', `${title}.jpg`); // Adjust based on your video naming convention
-      
+    try {
+      const thumbnailPath = path.join(__dirname, '../thumbnails', `${videoId}.jpg`); // Adjust based on your video naming convention
       res.sendFile(thumbnailPath, err => {
-          if (err) {
-              res.status(err.status).end();
-          }
+        if (err) { res.status(err.status).end(); }
       });
+    } catch (err) {
+      res.status(200).json({ status: 'ERROR', error: true, message: 'An error occurred' })
     }
-    catch (err)
-    {
-      res.status(200).json({
-        status: 'ERROR',
-        error: true,
-        message: 'An error occurred when updatin likes'
-      })
-    }
-
 });
 
 router.post('/view', async (req, res) => {
