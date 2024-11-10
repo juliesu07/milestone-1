@@ -107,35 +107,51 @@ async function processVideo(inputPath, videoId) {
 
       // Set up the FFmpeg command to generate the DASH (adaptive bitrate) streams
       ffmpeg(inputPath)
-          .outputOptions([
-              // Scale and pad filter broken into multiple parts for correct parsing
-              '-vf', 
-              'scale=\'if(gt(iw/ih,16/9),min(1280,iw),-2)\':\'if(gt(iw/ih,16/9),-2,min(720,ih))\', pad=1280:720:(1280-iw*min(1280/iw\,720/ih))/2:(720-ih*min(1280/iw\,720/ih))/2:black',
-              '-map', '0:v', '-b:v:0', '254k', '-s:v:0', '320x180',
-              '-map', '0:v', '-b:v:1', '507k', '-s:v:1', '320x180',
-              '-map', '0:v', '-b:v:2', '759k', '-s:v:2', '480x270',
-              '-map', '0:v', '-b:v:3', '1013k', '-s:v:3', '640x360',
-              '-map', '0:v', '-b:v:4', '1254k', '-s:v:4', '640x360',
-              '-map', '0:v', '-b:v:5', '1883k', '-s:v:5', '768x432',
-              '-map', '0:v', '-b:v:6', '3134k', '-s:v:6', '1024x576',
-              '-map', '0:v', '-b:v:7', '4952k', '-s:v:7', '1280x720',
-              '-f', 'dash',
-              '-seg_duration', '10',
-              '-use_template', '1',
-              '-use_timeline', '1',
-              '-adaptation_sets', 'id=0,streams=v',
-              `-init_seg_name "${videoId}_init_\$RepresentationID\$.m4s"`,
-              `-media_seg_name "${videoId}_chunk_\$Bandwidth\$_\$Number\$.m4s"`
-          ])
-          .on('end', () => {
-              console.log('Video processing complete');
-              resolve();
-          })
-          .on('error', (err) => {
-              console.error('Error processing video:', err);
-              reject(err);
-          })
-          .save(outputPath);
+      .videoFilters([
+          {
+              filter: 'scale',
+              options: {
+                  w: 'if(gt(iw/ih,16/9),min(1280,iw),-2)',
+                  h: 'if(gt(iw/ih,16/9),-2,min(720,ih))'
+              }
+          },
+          {
+              filter: 'pad',
+              options: {
+                  w: '1280',
+                  h: '720',
+                  x: '(1280-iw*min(1280/iw\,720/ih))/2',
+                  y: '(720-ih*min(1280/iw\,720/ih))/2',
+                  color: 'black'
+              }
+          }
+      ])
+      .outputOptions([
+          '-map', '0:v', '-b:v:0', '254k', '-s:v:0', '320x180',
+          '-map', '0:v', '-b:v:1', '507k', '-s:v:1', '320x180',
+          '-map', '0:v', '-b:v:2', '759k', '-s:v:2', '480x270',
+          '-map', '0:v', '-b:v:3', '1013k', '-s:v:3', '640x360',
+          '-map', '0:v', '-b:v:4', '1254k', '-s:v:4', '640x360',
+          '-map', '0:v', '-b:v:5', '1883k', '-s:v:5', '768x432',
+          '-map', '0:v', '-b:v:6', '3134k', '-s:v:6', '1024x576',
+          '-map', '0:v', '-b:v:7', '4952k', '-s:v:7', '1280x720',
+          '-f', 'dash',
+          '-seg_duration', '10',
+          '-use_template', '1',
+          '-use_timeline', '1',
+          '-adaptation_sets', 'id=0,streams=v',
+          `-init_seg_name "${videoId}_init_\$RepresentationID\$.m4s"`,
+          `-media_seg_name "${videoId}_chunk_\$Bandwidth\$_\$Number\$.m4s"`
+      ])
+      .on('end', () => {
+          console.log('Video processing complete');
+          resolve();
+      })
+      .on('error', (err) => {
+          console.error('Error processing video:', err);
+          reject(err);
+      })
+      .save(outputPath);
   });
 }
 
