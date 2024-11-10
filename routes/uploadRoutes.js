@@ -84,16 +84,16 @@ router.post('/upload', upload, async (req, res) => {
                 -map 0:v -b:v:6 3134k -s:v:6 1024x576 \
                 -map 0:v -b:v:7 4952k -s:v:7 1280x720 \
                 -f dash -seg_duration 10 -use_template 1 -use_timeline 1 -adaptation_sets "id=0,streams=v" \
-                -init_seg_name "${videoBaseName}_init_\$RepresentationID\$.m4s" \
-                -media_seg_name "${videoBaseName}_chunk_\$Bandwidth\$_\$Number\$.m4s" \
+                -init_seg_name "${videoBaseName}_init_\\$RepresentationID\\$.m4s" \
+                -media_seg_name "${videoBaseName}_chunk_\\$Bandwidth\\$_\\$Number\\$.m4s" \
                 "${videoOutputDir}/${video._id}.mpd"
             `;
 
             // Execute ffmpeg command to process the video
             exec(ffmpegCmd, (err, stdout, stderr) => {
                 if (err) {
-                    console.error('Error processing video:', stderr);
-                    return res.status(500).send(err);
+                    console.error('Error processing video:', stderr);  // Capturing stderr output for detailed error
+                    return res.status(500).send('Error processing video');
                 }
 
                 console.log('Video processing complete:', stdout);
