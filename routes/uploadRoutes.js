@@ -28,7 +28,7 @@ const storage = multer.diskStorage({
 const upload = multer({ 
     storage: storage,
     fileFilter: (req, file, cb) => {
-        const allowedTypes = ['video/mp4', 'video/mkv', 'video/webm'];  // Add any other types you want to support
+        const allowedTypes = ['video/mp4'];  // Add any other types you want to support
         if (!allowedTypes.includes(file.mimetype)) {
             return cb(new Error('Invalid file type, only MP4, MKV, or WEBM allowed'));
         }
@@ -70,8 +70,8 @@ router.post('/upload', upload, async (req, res) => {
 
             // Process video with FFmpeg for various qualities and generate thumbnail
             try {
-                await processVideo(newFilePath, video._id);
-                await generateThumbnail(newFilePath, video._id);
+                processVideo(newFilePath, video._id);
+                generateThumbnail(newFilePath, video._id);
 
                 // Optionally, if you want to update the user with the video ID:
                 if (req.body.userId) {
@@ -145,6 +145,7 @@ async function processVideo(inputPath, videoId) {
       ])
       .on('end', () => {
           console.log('Video processing complete');
+          Video.findByIdAndUpdate(video._id, { status: 'complete' });
           resolve();
       })
       .on('error', (err) => {
