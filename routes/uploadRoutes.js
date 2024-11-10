@@ -25,7 +25,7 @@ const upload = multer({ storage: storage }).single('video');
 router.use(express.json());
 
 // Route to handle video upload
-router.post('/upload', upload.single('mp4File'), async (req, res) => {
+router.post('/upload', upload, async (req, res) => {
     const { author, title } = req.body;
     if (!req.file || !author || !title) {
         return res.status(400).send('Missing required fields (author, title, mp4File)');
