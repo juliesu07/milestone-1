@@ -39,10 +39,10 @@ router.use(express.json());
 // Route to handle video upload
 router.post('/upload', upload, async (req, res) => {
   const { author, title } = req.body;
+  const userId = req.session.userId;
   if (!req.file || !author || !title) {
-      return res.status(400).send('Missing required fields (author, title, or video file)');
+      return res.status(200).json({ status: 'ERROR', error: true, message: 'Missing required fields (author, title, or video file)' });
   }
-
   try {
       // Create the video document in the database with a 'processing' status
       const video = new Video({
@@ -69,6 +69,8 @@ router.post('/upload', upload, async (req, res) => {
           backgroundProcessVideo(newFilePath, video._id);
       });
 
+
+      await User.findByIdAndUpdate(userId, { $push: { watched: video._id } });
       // Respond immediately after upload, with video ID
       res.status(200).send({ id: video._id });
 

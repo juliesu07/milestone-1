@@ -27,10 +27,7 @@ router.post('/videos', async (req, res) => {
       likevalues: like,
     }));
 
-    return res.json({
-      status: 'OK',
-      videos,
-    });
+    return res.json({ status: 'OK', videos, });
   }
   catch (err) {
     console.log(err);
@@ -69,29 +66,18 @@ router.get('/randvideo/:eid', (req, res) => {
 // GET /manifest/:id - Send DASH manifest for video with id :id
 router.get('/manifest/:id', async (req, res) => {
     const videoId = req.params.id;
-    try
-    {
-      const video = await Video.findById(videoId);
-      const title = video.title.endsWith('.mp4') ? video.title.slice(0, -4) : video.title;
-      // console.log(title);
-      const manifestPath = path.join(__dirname, '../media', `${title}.mpd`);
+    try {
+      // const video = await Video.findById(videoId);
+      // const title = video.title.endsWith('.mp4') ? video.title.slice(0, -4) : video.title;
+      // // console.log(title);
+      const manifestPath = path.join(__dirname, '../media', `${videoId}.mpd`);
   
       res.sendFile(manifestPath, err => {
-          if (err) {
-              res.status(err.status).end();
-          }
+        if (err) { res.status(err.status).end(); }
       });
-
+    } catch (err) {
+      res.status(200).json({ status: 'ERROR', error: true, message: err.message });
     }
-    catch (err)
-    {
-      res.status(200).json({
-        status: 'ERROR',
-        error: true,
-        message: 'An error occurred when updatin likes'
-      })
-    }
-    // Construct the manifest path based on the presence of a file type
 });
 
 
@@ -116,17 +102,13 @@ router.post('/view', async (req, res) => {
   const viewed = user.watched.includes(videoId);
   
 
-  if (!viewed)
-  {
+  if (!viewed) {
     user.watched.push(videoId);
     console.log(user.watched);
     await user.save();
   }
 
-  return res.json({
-    status: 'OK',
-    viewed: viewed,
-  });
+  return res.json({ status: 'OK', viewed: viewed, });
 });
 
 router.post('/like', async (req, res) => {
@@ -140,37 +122,34 @@ router.post('/like', async (req, res) => {
     const liked = user.liked.includes(videoId);
     const disliked = user.disliked.includes(videoId);
 
-    // Check if the value is the same as the current like/dislike status
-    if ((value && liked) || (!value && disliked)) {
-      return res.status(200).json({
-        status: 'ERROR',
-        error: true,
-        message: "The value that you want to set is the same"
-      });
-    }
-
     const updateUser = {};
     const updateVideo = {};
 
     // Handle like action
     if (value) {
-      if (disliked) {
-        // Remove from dislikes if already disliked
-        updateUser.$pull = { disliked: videoId };
-        updateVideo.$inc = { dislike: -1 };
-      }
-      // Add to liked
-      updateUser.$addToSet = { liked: videoId };
-      updateVideo.$inc = { like: 1 };
-    } else {
-      if (liked) {
-        // Remove from likes if already liked
+      if (liked) { // Remove from likes if already liked
         updateUser.$pull = { liked: videoId };
         updateVideo.$inc = { like: -1 };
+      } else { // Else Add to liked
+        if (disliked) { // Remove from dislikes if already disliked
+          updateUser.$pull = { disliked: videoId };
+          updateVideo.$inc = { dislike: -1 };
+        }
+        updateUser.$addToSet = { liked: videoId };
+        updateVideo.$inc = { like: 1 };
       }
-      // Add to disliked
-      updateUser.$addToSet = { disliked: videoId };
-      updateVideo.$inc = { dislike: 1 };
+    } else {
+      if (disliked) { // Remove from dislikes if already disliked
+        updateUser.$pull = { disliked: videoId };
+        updateVideo.$inc = { dislike: -1 };
+      } else { // Else Add to disliked
+        if (liked) { // Remove from likes if already liked
+          updateUser.$pull = { liked: videoId };
+          updateVideo.$inc = { like: -1 };
+        }
+        updateUser.$addToSet = { disliked: videoId };
+        updateVideo.$inc = { dislike: 1 };
+      }
     }
 
     // Update user and video with atomic operations
@@ -179,23 +158,17 @@ router.post('/like', async (req, res) => {
 
     res.status(200).json({ status: 'OK', likes: video.like });
   } catch (err) {
-    res.status(200).json({
-      status: 'ERROR',
-      error: true,
-      message: err.message
-    });
+    res.status(200).json({ status: 'ERROR', error: true, message: err.message });
   }
 });
 
 router.get('/processing-status', async (req, res) => {
     const userId = req.session.userId;
-    try
-    {
+    try {
       const user = await User.findById(userId);
       const videoIds = user.videos;
       const videos = [];
-      for (let i = 0; i < videoIds.length; i++)
-      {
+      for (let i = 0; i < videoIds.length; i++) {
         const videoStats = await Video.findById(videoIds[i]);
         let video = {
           id: videoStats.id,
@@ -205,16 +178,9 @@ router.get('/processing-status', async (req, res) => {
         videos.push(video);
       }
       return res.status(200).json({ status: 'OK', videos: videos })
+    } catch (err) {
+      res.status(200).json({ status: 'ERROR', error: true, message: err.message });
     }
-    catch (err)
-    {
-      res.status(200).json({
-        status: 'ERROR',
-        error: true,
-        message: err.message
-      });
-    }
-
 });
 
 module.exports = router;
