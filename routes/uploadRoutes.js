@@ -40,64 +40,62 @@ router.use(express.json());
 
 // Route to handle video upload
 router.post('/upload', upload, async (req, res) => {
-    const { author, title } = req.body;
-    if (!req.file || !author || !title) {
-        return res.status(400).send('Missing required fields (author, title, or video file)');
-    }
+  const { author, title } = req.body;
+  if (!req.file || !author || !title) {
+      return res.status(400).send('Missing required fields (author, title, or video file)');
+  }
 
-    try {
-        // Create the video document in the database
-        const video = new Video({
-            title: title,
-            description: author,  // Assuming 'author' as description for now
-            status: 'processing',  // Default status
-        });
+  try {
+      // Create the video document in the database with a 'processing' status
+      const video = new Video({
+          title: title,
+          description: author,
+          status: 'processing',  // Default status
+      });
 
-        // Save video document to database
-        await video.save();
+      // Save video document to database
+      await video.save();
 
-        // Rename the uploaded file to the video document ID (Mongoose _id)
-        const newFileName = `${video._id}${path.extname(req.file.originalname)}`;
-        const oldFilePath = path.join(__dirname, '..', 'videos', req.file.filename);
-        const newFilePath = path.join(__dirname, '..', 'videos', newFileName);
+      // Rename the uploaded file to the video document ID (Mongoose _id)
+      const newFileName = `${video._id}${path.extname(req.file.originalname)}`;
+      const oldFilePath = path.join(__dirname, '..', 'videos', req.file.filename);
+      const newFilePath = path.join(__dirname, '..', 'videos', newFileName);
 
-        // Rename the file to the video document's ID (asynchronously)
-        fs.rename(oldFilePath, newFilePath, async (err) => {
-            if (err) {
-                console.error('Error renaming file:', err);
-                return res.status(500).send('Error renaming file');
-            }
+      // Rename the file to the video document's ID (asynchronously)
+      fs.rename(oldFilePath, newFilePath, (err) => {
+          if (err) {
+              console.error('Error renaming file:', err);
+              return res.status(500).send('Error renaming file');
+          }
+          // Background process for video and thumbnail generation
+          backgroundProcessVideo(newFilePath, video._id);
+      });
 
-            // Process video with FFmpeg for various qualities and generate thumbnail
-            try {
-                processVideo(newFilePath, video._id);
-                generateThumbnail(newFilePath, video._id);
+      // Respond immediately after upload, with video ID
+      res.status(200).send({ id: video._id });
 
-                // Optionally, if you want to update the user with the video ID:
-                if (req.body.userId) {
-                    User.findById(req.body.userId, (err, user) => {
-                        if (err || !user) {
-                            return res.status(404).send('User not found');
-                        }
-                        user.videos.push(video._id);
-                        user.save()
-                            .then(() => res.status(200).send({ id: video._id }))
-                            .catch((error) => res.status(500).send('Error updating user video list'));
-                    });
-                } else {
-                    res.status(200).send({ id: video._id });
-                }
-            } catch (error) {
-                console.error('Error processing video:', error);
-                res.status(500).send('Error processing video');
-            }
-        });
-
-    } catch (error) {
-        console.error('Error uploading video:', error);
-        res.status(500).send('Error uploading video');
-    }
+  } catch (error) {
+      console.error('Error uploading video:', error);
+      res.status(500).send('Error uploading video');
+  }
 });
+
+// Background function to handle video processing and status update
+async function backgroundProcessVideo(filePath, videoId) {
+  try {
+      // Process video and generate thumbnail in parallel
+      await Promise.all([
+          processVideo(filePath, videoId),
+          generateThumbnail(filePath, videoId),
+      ]);
+
+      // Update video status to 'complete' after processing finishes
+      await Video.findByIdAndUpdate(videoId, { status: 'complete' });
+      console.log(`Video ${videoId} processed and status updated to complete`);
+  } catch (error) {
+      console.error(`Error processing video ${videoId}:`, error);
+  }
+}
 
 // Function to process video into multiple resolutions using FFmpeg
 async function processVideo(inputPath, videoId) {
@@ -145,7 +143,6 @@ async function processVideo(inputPath, videoId) {
       ])
       .on('end', () => {
           console.log('Video processing complete');
-          Video.findByIdAndUpdate(videoId, { status: 'complete' });
           resolve();
       })
       .on('error', (err) => {
