@@ -93,7 +93,7 @@ router.post('/upload', upload, async (req, res) => {
             exec(ffmpegCmd, (err, stdout, stderr) => {
                 if (err) {
                     console.error('Error processing video:', stderr);
-                    return res.status(500).send('Error processing video');
+                    return res.status(500).send(err);
                 }
 
                 console.log('Video processing complete:', stdout);
