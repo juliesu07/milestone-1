@@ -116,7 +116,7 @@
                 const response = await fetch(`/api/randvideo/${currentVideoId}`);
                 const data = await response.json();
                 if (data.status === 'OK') {
-                    const newId = data.video.title;
+                    const newId = data.videoId;
                     videoHistory.push(currentVideoId); // Push current video ID to history stack
                     loadVideo(newId); // Load the new video
                     updateUrl(newId); // Update the URL

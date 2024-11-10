@@ -2,24 +2,11 @@
 const express = require('express');
 const User = require('../models/User');
 const nodemailer = require('nodemailer');
-const bcrypt = require('bcrypt');
 const router = express.Router();
 
 // Mail configuration
 const { smtpConfig } = require('../config/mailConfig');
 const transporter = nodemailer.createTransport(smtpConfig);
-
-const checkSession = (req, res, next) => {
-    if (req.session) {
-        next(); // User is authenticated, proceed to the next middleware or route handler
-    } else {
-        return res.status(200).json({
-            status: "ERROR",
-            error: true,
-            message: "Not logged in"
-        });
-    }
-};
 
 // Add user
 router.post('/adduser', async (req, res) => {

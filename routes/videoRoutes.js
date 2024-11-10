@@ -31,47 +31,35 @@ router.post('/videos', async (req, res) => {
   }
   catch (err) {
     console.log(err);
-    res.status(500).json({
-      status: 'Error',
-      message: "Blame Anna for not being able to retrieve videos",
-    });
+    res.status(500).json({ status: 'Error', message: "Blame Anna for not being able to retrieve videos" });
   }
 });
 
 // Send Random Video that does not match eid
-router.get('/randvideo/:eid', (req, res) => {
+router.get('/randvideo/:eid', async (req, res) => {
   const { eid } = req.params;
-  const videoEntries = Object.entries(videoData).filter(([id]) => id !== eid); // Exclude entry with the same title as eid
+  try {
+    // Query to get only the IDs of videos except the one with the specified eid
+    const videos = await Video.find({ _id: { $ne: eid } }).select('_id');
+    
+    if (videos.length === 0) { return res.status(404).json({ status: 'Error', message: 'No other videos found.' }); }
 
-  if (videoEntries.length === 0) {
-    return res.status(404).json({ status: 'Error', message: 'No other videos found.' });
+    // Extract only the IDs into an array
+    const videoIds = videos.map(video => video._id);
+
+    // Get a random ID from the list of video IDs
+    const randomVideoId = videoIds[Math.floor(Math.random() * videoIds.length)];
+    return res.json({ status: 'OK', videoId: randomVideoId });
+  } catch (error) {
+    return res.status(500).json({ status: 'Error', message: 'Internal server error.' });
   }
-
-  // Get a random entry from the filtered list
-  const randomEntry = videoEntries[Math.floor(Math.random() * videoEntries.length)];
-  const [id, description] = randomEntry;
-
-  // Format the response to remove .mp4 from the title if present
-  const video = {
-    title: id.endsWith('.mp4') ? id.slice(0, -4) : id,
-    description,
-  };
-
-  return res.json({
-    status: 'OK',
-    video,
-  });
 });
 
 // GET /manifest/:id - Send DASH manifest for video with id :id
 router.get('/manifest/:id', async (req, res) => {
     const videoId = req.params.id;
     try {
-      // const video = await Video.findById(videoId);
-      // const title = video.title.endsWith('.mp4') ? video.title.slice(0, -4) : video.title;
-      // // console.log(title);
       const manifestPath = path.join(__dirname, '../media', `${videoId}.mpd`);
-  
       res.sendFile(manifestPath, err => {
         if (err) { res.status(err.status).end(); }
       });
