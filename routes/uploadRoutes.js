@@ -71,7 +71,8 @@ router.post('/upload', upload, async (req, res) => {
             const videoPath = newFilePath; // Full input path for ffmpeg
             const thumbnailPath = path.join(thumbnailOutputDir, `${video._id}.jpg`);
 
-            // Run ffmpeg commands to process video
+            const videoBaseName = path.basename(videoPath, path.extname(videoPath));  // Get the file name without the extension
+
             const ffmpegCmd = `
                 ffmpeg -i "${videoPath}" -vf "scale='if(gt(iw/ih,16/9),min(1280,iw),-2)':'if(gt(iw/ih,16/9),-2,min(720,ih))',pad=1280:720:(1280-iw*min(1280/iw\,720/ih))/2:(720-ih*min(1280/iw\,720/ih))/2:black" \
                 -map 0:v -b:v:0 254k -s:v:0 320x180 \
@@ -83,8 +84,8 @@ router.post('/upload', upload, async (req, res) => {
                 -map 0:v -b:v:6 3134k -s:v:6 1024x576 \
                 -map 0:v -b:v:7 4952k -s:v:7 1280x720 \
                 -f dash -seg_duration 10 -use_template 1 -use_timeline 1 -adaptation_sets "id=0,streams=v" \
-                -init_seg_name "${videoPath%.mp4}_init_\$RepresentationID\$.m4s" \
-                -media_seg_name "${videoPath%.mp4}_chunk_\$Bandwidth\$_\$Number\$.m4s" \
+                -init_seg_name "${videoBaseName}_init_\$RepresentationID\$.m4s" \
+                -media_seg_name "${videoBaseName}_chunk_\$Bandwidth\$_\$Number\$.m4s" \
                 "${videoOutputDir}/${video._id}.mpd"
             `;
 
