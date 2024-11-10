@@ -69,7 +69,7 @@ router.post('/upload', upload, async (req, res) => {
           backgroundProcessVideo(newFilePath, video._id);
       });
 
-      await User.findByIdAndUpdate(userId, { $push: { watched: video._id } });
+      await User.findByIdAndUpdate(userId, { $push: { videos: video._id } });
       // Respond immediately after upload, with video ID
       res.status(200).send({ status: 'OK', id: video._id });
   } catch (error) {

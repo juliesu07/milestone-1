@@ -11,10 +11,7 @@
             padding: 0;
             overflow-x: hidden;
             font-family: Arial, sans-serif;
-            height: 120vh; /* Set a taller height to allow scrolling */
-        }
-        #block {
-            height: 10vh;
+            height: 100vh; /* Set a taller height to allow scrolling */
         }
         #videoContainer {
             display: flex;
@@ -59,7 +56,6 @@
     </style>
 </head>
 <body>
-    <div id="block"></div>
     <div id="videoContainer">
         <video id="videoPlayer" autoplay muted></video>
         <div id="controls">
@@ -69,7 +65,6 @@
         </div>
         <div id="error" style="display: none;"></div>
     </div>
-    <div id="block"></div>
     <script>
         const videoPlayer = document.getElementById('videoPlayer');
         const playPauseBtn = document.getElementById('playPauseBtn');
