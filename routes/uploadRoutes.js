@@ -34,7 +34,7 @@ const upload = multer({
         }
         cb(null, true);
     }
-}).single('video');
+}).single('mp4File');
 
 router.use(express.json());
 
