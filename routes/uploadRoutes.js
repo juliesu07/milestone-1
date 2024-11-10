@@ -3,16 +3,18 @@ const express = require('express');
 const mongoose = require('mongoose');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const Video = require('../models/Video');
 const User = require('../models/User');
-const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');  // To generate unique filenames
+
 const router = express.Router();
 
 // Set up multer storage configuration for video uploads
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, '../videos');  // Folder where video files will be stored
+        // Folder where video files will be stored
+        cb(null, path.join(__dirname, '../videos'));  // Ensure 'videos' folder is in the correct location
     },
     filename: function (req, file, cb) {
         // Create a unique filename using the UUID
@@ -20,15 +22,24 @@ const storage = multer.diskStorage({
     }
 });
 
-const upload = multer({ storage: storage }).single('video');
+const upload = multer({ 
+    storage: storage, 
+    limits: { fileSize: 100 * 1024 * 1024 }  // 100 MB file size limit
+}).single('video');  // Field name 'video' must match the form input field
 
 router.use(express.json());
 
 // Route to handle video upload
 router.post('/upload', upload, async (req, res) => {
     const { author, title } = req.body;
-    if (!req.file || !author || !title) {
-        return res.status(400).send('Missing required fields (author, title, mp4File)');
+
+    // Check if Multer did anything and whether the required fields are present
+    if (!req.file) {
+        return res.status(400).send('No file uploaded');
+    }
+
+    if (!author || !title) {
+        return res.status(400).send('Missing required fields (author, title)');
     }
 
     try {
@@ -42,27 +53,39 @@ router.post('/upload', upload, async (req, res) => {
         // Save video document to database
         await video.save();
 
-        // Rename the uploaded file to the video document ID (Mongoose _id)
+        // Wait until multer has finished handling the file before renaming
         const newFileName = `${video._id}${path.extname(req.file.originalname)}`;
         const oldFilePath = path.join(__dirname, '../videos', req.file.filename);
         const newFilePath = path.join(__dirname, '../videos', newFileName);
 
-        // Rename the file to the video document's ID
-        fs.renameSync(oldFilePath, newFilePath);
-
-        // Optionally, if you want to update the user with the video ID:
-        if (req.body.userId) {
-            const user = await User.findById(req.body.userId);
-            if (!user) {
-                return res.status(404).send('User not found.');
+        // Rename the file to the video document's ID (after multer has uploaded it)
+        fs.rename(oldFilePath, newFilePath, (err) => {
+            if (err) {
+                console.error('Error renaming file:', err);
+                return res.status(500).send('Error renaming video file');
             }
 
-            user.videos.push(video._id);  // Add video ID to user's video list
-            await user.save();
-        }
+            // Update the video document with the new filename
+            video.filename = newFileName;  // Add filename to the video document
 
-        // Send a success response with video details
-        res.status(200).send({ id: video._id, });
+            // Optionally, update the user with the video ID:
+            if (req.body.userId) {
+                const user = await User.findById(req.body.userId);
+                if (!user) {
+                    return res.status(404).send('User not found.');
+                }
+
+                user.videos.push(video._id);  // Add video ID to user's video list
+                await user.save();
+            }
+
+            // Send a success response with video details
+            res.status(200).send({
+                message: 'Video uploaded successfully',
+                videoId: video._id,
+                filename: newFileName, // Send back the new file name
+            });
+        });
 
     } catch (error) {
         console.error('Error uploading video:', error);
