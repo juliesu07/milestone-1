@@ -155,6 +155,7 @@ async function generateThumbnail(inputPath, videoId) {
 
         ffmpeg(inputPath).on('end', () => {
             console.log('Thumbnail generation complete');
+            resolve();
         }).on('error', (err) => {
             console.error('Error generating thumbnail:', err);
             reject(err);
