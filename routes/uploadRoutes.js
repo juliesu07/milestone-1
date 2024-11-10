@@ -140,12 +140,12 @@ async function processVideo(inputPath, videoId) {
           '-use_template', '1',
           '-use_timeline', '1',
           '-adaptation_sets', 'id=0,streams=v',
-          `-init_seg_name "${videoId}_init_\$RepresentationID\$.m4s"`,
-          `-media_seg_name "${videoId}_chunk_\$Bandwidth\$_\$Number\$.m4s"`
+          '-init_seg_name', `${videoId}_init_$RepresentationID$.m4s`,
+          '-media_seg_name', `${videoId}_chunk_$Bandwidth$_$Number$.m4s`
       ])
       .on('end', () => {
           console.log('Video processing complete');
-          Video.findByIdAndUpdate(video._id, { status: 'complete' });
+          Video.findByIdAndUpdate(videoId, { status: 'complete' });
           resolve();
       })
       .on('error', (err) => {
