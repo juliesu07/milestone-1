@@ -6,6 +6,7 @@ const Video = require('../models/Video');
 const User = require('../models/User');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
+const { exec } = require('child_process'); // For running shell commands
 const router = express.Router();
 
 // Set up multer storage configuration for video uploads
@@ -63,22 +64,80 @@ router.post('/upload', upload, async (req, res) => {
                 return res.status(500).send('Error renaming file');
             }
 
-            // Optionally, if you want to update the user with the video ID:
-            if (req.body.userId) {
-                User.findById(req.body.userId, (err, user) => {
-                    if (err || !user) {
-                        return res.status(404).send('User not found');
-                    }
-                    user.videos.push(video._id);
-                    user.save()
-                        .then(() => res.status(200).send({ id: video._id }))
-                        .catch((error) => res.status(500).send('Error updating user video list'));
-                });
-            } else {
-                res.status(200).send({ id: video._id });
-            }
-        });
+            // Define output paths for video and thumbnails
+            const videoOutputDir = path.resolve(__dirname, '..', 'media');
+            const thumbnailOutputDir = path.resolve(__dirname, '..', 'thumbnails');
+            
+            const videoPath = newFilePath; // Full input path for ffmpeg
+            const thumbnailPath = path.join(thumbnailOutputDir, `${video._id}.jpg`);
 
+            // Run ffmpeg commands to process video
+            const ffmpegCmd = `
+                ffmpeg -i "${videoPath}" -vf "scale='if(gt(iw/ih,16/9),min(1280,iw),-2)':'if(gt(iw/ih,16/9),-2,min(720,ih))',pad=1280:720:(1280-iw*min(1280/iw\,720/ih))/2:(720-ih*min(1280/iw\,720/ih))/2:black" \
+                -map 0:v -b:v:0 254k -s:v:0 320x180 \
+                -map 0:v -b:v:1 507k -s:v:1 320x180 \
+                -map 0:v -b:v:2 759k -s:v:2 480x270 \
+                -map 0:v -b:v:3 1013k -s:v:3 640x360 \
+                -map 0:v -b:v:4 1254k -s:v:4 640x360 \
+                -map 0:v -b:v:5 1883k -s:v:5 768x432 \
+                -map 0:v -b:v:6 3134k -s:v:6 1024x576 \
+                -map 0:v -b:v:7 4952k -s:v:7 1280x720 \
+                -f dash -seg_duration 10 -use_template 1 -use_timeline 1 -adaptation_sets "id=0,streams=v" \
+                -init_seg_name "${videoPath%.mp4}_init_\$RepresentationID\$.m4s" \
+                -media_seg_name "${videoPath%.mp4}_chunk_\$Bandwidth\$_\$Number\$.m4s" \
+                "${videoOutputDir}/${video._id}.mpd"
+            `;
+
+            // Execute ffmpeg command to process the video
+            exec(ffmpegCmd, (err, stdout, stderr) => {
+                if (err) {
+                    console.error('Error processing video:', stderr);
+                    return res.status(500).send('Error processing video');
+                }
+
+                console.log('Video processing complete:', stdout);
+
+                // Now generate a thumbnail
+                const thumbnailCmd = `
+                    ffmpeg -i "${videoPath}" -ss 00:00:00.000 -vframes 1 -vf "scale='if(gt(iw/ih,${320}/180),${320},-1)':'if(gt(iw/ih,${320}/180),-1,${180})',pad=${320}:${180}:(ow-iw)/2:(oh-ih)/2" "${thumbnailPath}" -y
+                `;
+
+                // Execute thumbnail creation command
+                exec(thumbnailCmd, (err, stdout, stderr) => {
+                    if (err) {
+                        console.error('Error creating thumbnail:', stderr);
+                        return res.status(500).send('Error creating thumbnail');
+                    }
+
+                    console.log('Thumbnail creation complete:', stdout);
+
+                    // Update the video status to "complete" after processing and thumbnail creation
+                    Video.findByIdAndUpdate(video._id, { status: 'complete' }, { new: true }, (err, updatedVideo) => {
+                        if (err || !updatedVideo) {
+                            console.error('Error updating video status:', err);
+                            return res.status(500).send('Error updating video status');
+                        }
+
+                        console.log('Video status updated to complete');
+                        
+                        // Optionally, if you want to update the user with the video ID:
+                        if (req.body.userId) {
+                            User.findById(req.body.userId, (err, user) => {
+                                if (err || !user) {
+                                    return res.status(404).send('User not found');
+                                }
+                                user.videos.push(updatedVideo._id);
+                                user.save()
+                                    .then(() => res.status(200).send({ id: updatedVideo._id }))
+                                    .catch((error) => res.status(500).send('Error updating user video list'));
+                            });
+                        } else {
+                            res.status(200).send({ id: updatedVideo._id });
+                        }
+                    });
+                });
+            });
+        });
     } catch (error) {
         console.error('Error uploading video:', error);
         res.status(500).send('Error uploading video');
