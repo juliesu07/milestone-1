@@ -1,4 +1,6 @@
 // routes/videoRoutes.js
+const { createClient } = require('redis');
+const { v4: uuidv4 } = require('uuid');
 const express = require('express');
 const router = express.Router();
 const path = require('path');
@@ -8,12 +10,46 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 const Video = require('../models/Video');
 const User = require('../models/User');
 
+// const client = createClient();
+// client.on('error', (err) => console.error('Redis Client Error', err));
+
+// // Connect to Redis
+// (async () => {
+//   await client.connect();
+// })();
+
 // Get count number of video entires
 router.post('/videos', async (req, res) => {
   const { count} = req.body;
   const userId = req.session.userId;
-  // PLEASE READ add ml library, im just editing the format of the json 
+  // // PLEASE READ add ml library, im just editing the format of the json 
 
+  // // Unique request ID to track this specific recommendation request
+  // const requestId = uuidv4();
+
+  // // Enqueue the request with user ID and count in Redis
+  // const requestPayload = JSON.stringify({ requestId, userId, count });
+  // await client.lPush('recommendation_queue', requestPayload);  // Using lPush in Redis v4.x
+
+  // // Listen for the response on Redis
+  // const responseKey = `recommendation_response_${requestId}`;
+  // try {
+  //   // Block until the response arrives or a timeout occurs (30 seconds)
+  //   const response = await client.blPop(responseKey, 30);  // Using blPop in Redis v4.x
+    
+  //   if (response) {
+  //     // Parse the response and send it back to the client
+  //     const recommendedVideos = JSON.parse(response.element).videos;
+  //     return res.json({ videos: recommendedVideos });
+  //   } else {
+  //     // If no response is received within the timeout, send an error
+  //     return res.status(200).json({ status: 'ERROR', error: true, message: err.message });
+  //   }
+  // } catch (err) {
+  //   // Handle any unexpected errors
+  //   console.error('Error processing recommendations:', err);
+  //   return res.status(200).json({ status: 'ERROR', error: true, message: err.message });
+  // }
   try {
     const videoEntries = await Video.find({}).limit(count);
     const user = await User.findById(userId);
@@ -46,14 +82,14 @@ router.get('/randvideo/:eid', async (req, res) => {
     ]);
 
     if (videos.length === 0) {
-      return res.status(404).json({ status: 'Error', message: 'No other videos found.' });
+      return res.status(200).json({ status: 'ERROR', error: true, message: err.message });
     }
 
     // Extract the IDs into an array
     const videoIds = videos.map(video => video._id);
     return res.json({ status: 'OK', videoIds });
   } catch (error) {
-    return res.status(500).json({ status: 'Error', message: 'Internal server error.' });
+    return res.status(200).json({ status: 'ERROR', error: true, message: err.message });
   }
 });
 
