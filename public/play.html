@@ -110,18 +110,17 @@
                 if (videoHistoryIndex >= videoHistory.length - 5) {
                     const response = await fetch(`/api/randvideo/${currentVideoId}`);
                     const data = await response.json();
-                    console.log(data);
+                    
                     if (data.status === 'OK') {
                         videoHistory.push(...data.videoIds); // Append new videos
-                        videoHistoryIndex = videoHistory.length - 1; // Set index to last added video
                     } else {
                         throw new Error('Failed to fetch new video');
                     }
                 }
 
-                const newId = videoHistory[videoHistoryIndex + 1]; // Get the next video ID
                 console.log(newId  + " | " + videoHistoryIndex);
                 console.log(videoHistory);
+                const newId = videoHistory[videoHistoryIndex + 1]; // Get the next video ID
                 loadVideo(newId); // Load the new video
                 updateUrl(newId); // Update the URL
                 videoHistoryIndex++; // Increment the history index
