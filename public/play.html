@@ -68,9 +68,9 @@
     <script>
         let player = null;
         let videoLoadCount = 0;  // Counter to track number of videos loaded
+        let currentVideoId = window.location.pathname.split('/').pop() || 'defaultId';  // Initialize currentVideoId with a fallback
 
         async function loadVideo(id) {
-            // Increment the counter every time a video is loaded
             videoLoadCount++;
 
             // Reset player if videoLoadCount reaches 5
@@ -198,6 +198,7 @@
         }, { threshold: 0.1 });
 
         observer.observe(document.querySelector('#videoContainer'));
+
 
     </script>
 </body>
