@@ -66,57 +66,40 @@
         <div id="error" style="display: none;"></div>
     </div>
     <script>
-        const videoPlayer = document.getElementById('videoPlayer');
-        const playPauseBtn = document.getElementById('playPauseBtn');
-        const errorDiv = document.getElementById('error');
-        let currentVideoId = window.location.pathname.split('/').pop();
-        const videoHistory = [];
-        let videoHistoryIndex = -1;
-        let player = null; // Store the player instance
+        let player = null;
+        let videoLoadCount = 0;  // Counter to track number of videos loaded
 
         async function loadVideo(id) {
-            try {
+            // Increment the counter every time a video is loaded
+            videoLoadCount++;
+
+            // Reset player if videoLoadCount reaches 5
+            if (videoLoadCount >= 5) {
                 if (player) {
-                    player.reset(); // Reset the previous player instance
+                    player.reset(); // Properly clean up previous player instance
                 }
-
-                const mediaUrl = `http://130.245.136.220/media/${id}.mpd`;
-
-                // Initialize the player asynchronously
-                player = dashjs.MediaPlayer().create();
-                player.setProtectionData({});
-                player.setAutoPlay(true); // Auto-play once the video is ready
-                await new Promise((resolve, reject) => {
-                    player.initialize(videoPlayer, mediaUrl, false);
-                    player.on(dashjs.MediaPlayer.events.MANIFEST_LOADED, resolve);
-                    player.on(dashjs.MediaPlayer.events.ERROR, reject);
-                });
-
-                // Video is ready to play, update UI
-                playPauseBtn.textContent = 'Pause';
-                currentVideoId = id;
-                setScrollToMiddle();
-                updateUrl(id);
-
-                // Track video view asynchronously in the background
-                setTimeout(() => {
-                    fetch('/api/view', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: currentVideoId })
-                    });
-                }, 1000); // Delay view tracking slightly
-
-            } catch (error) {
-                console.error('Error loading video:', error);
-                errorDiv.textContent = 'Error loading video.';
-                errorDiv.style.display = 'block';
+                videoLoadCount = 0;  // Reset the counter after resetting the player
             }
+
+            const mediaUrl = `http://130.245.136.220/media/${id}.mpd`;
+            player = dashjs.MediaPlayer().create();
+            player.setProtectionData({});
+            player.initialize(videoPlayer, mediaUrl, true); // Autoplay new video
+
+            player.on('error', (e) => {
+                console.error('Error occurred: ', e);
+                errorDiv.textContent = 'Failed to load video. Please try again later.';
+                errorDiv.style.display = 'block';
+            });
+
+            playPauseBtn.textContent = 'Pause';
+            currentVideoId = id;  // Update current video ID
+            setScrollToMiddle();   // Set scroll position to middle when loading a new video
         }
 
         function updateUrl(newId) {
             const newUrl = `/play/${newId}`;
-            history.pushState(null, '', newUrl);
+            history.pushState(null, '', newUrl);  // Update the browser URL
         }
 
         function setScrollToMiddle() {
@@ -129,18 +112,18 @@
                 if (videoHistoryIndex >= videoHistory.length - 5) {
                     const response = await fetch(`/api/randvideo/${currentVideoId}`);
                     const data = await response.json();
-
+                    
                     if (data.status === 'OK') {
-                        videoHistory.push(...data.videoIds);
+                        videoHistory.push(...data.videoIds);  // Append new videos
                     } else {
                         throw new Error('Failed to fetch new video');
                     }
                 }
 
                 const newId = videoHistory[videoHistoryIndex + 1];
-                loadVideo(newId);
-                videoHistoryIndex++;
-
+                loadVideo(newId);  // Load the new video
+                updateUrl(newId);   // Update the URL
+                videoHistoryIndex++;  // Increment the history index
             } catch (error) {
                 console.error('Error fetching new video:', error);
                 errorDiv.textContent = 'Error loading new video.';
@@ -151,8 +134,9 @@
         async function loadPreviousVideo() {
             if (videoHistoryIndex > 0) {
                 const previousVideoId = videoHistory[videoHistoryIndex - 1];
-                loadVideo(previousVideoId);
-                videoHistoryIndex--;
+                loadVideo(previousVideoId);  // Load the previous video
+                updateUrl(previousVideoId);  // Update the URL
+                videoHistoryIndex--;  // Decrement the history index
             } else {
                 console.log("No previous video in history.");
             }
@@ -160,18 +144,24 @@
 
         document.getElementById('likeBtn').addEventListener('click', async (e) => {
             e.preventDefault();
-            await fetch('/api/like', {
+
+            const response = await fetch('/api/like', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({ id: currentVideoId, value: true })
             });
         });
 
         document.getElementById('dislikeBtn').addEventListener('click', async (e) => {
             e.preventDefault();
-            await fetch('/api/like', {
+
+            const response = await fetch('/api/like', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({ id: currentVideoId, value: false })
             });
         });
@@ -188,26 +178,27 @@
 
         window.addEventListener('load', () => {
             loadVideo(currentVideoId);
-            setScrollToMiddle();
+            setScrollToMiddle();  // Center scroll when page initially loads
         });
 
         window.addEventListener('wheel', (event) => {
-            if (event.deltaY > 0) {
+            if (event.deltaY > 0) {  // Scroll down
                 fetchNewVideo();
-            } else if (event.deltaY < 0) {
+            } else if (event.deltaY < 0) {  // Scroll up
                 loadPreviousVideo();
             }
         });
 
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                if (!entry.isIntersecting) {
+                if (!entry.isIntersecting) {  // If the video is out of view
                     fetchNewVideo();
                 }
             });
         }, { threshold: 0.1 });
 
         observer.observe(document.querySelector('#videoContainer'));
+
     </script>
 </body>
 </html>
