@@ -118,9 +118,12 @@
                     }
                 }
 
-                console.log(newId  + " | " + videoHistoryIndex);
-                console.log(videoHistory);
+
                 const newId = videoHistory[videoHistoryIndex + 1]; // Get the next video ID
+
+                // console.log(newId  + " | " + videoHistoryIndex);
+                // console.log(videoHistory);
+
                 loadVideo(newId); // Load the new video
                 updateUrl(newId); // Update the URL
                 videoHistoryIndex++; // Increment the history index

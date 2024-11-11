@@ -44,7 +44,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ count })
         });
-        console.log(response);
+        // console.log(response);
         const data = await response.json();
 	
         if (data.status === 'OK') {
@@ -53,8 +53,8 @@
 
           data.videos.forEach(video => {
             const prevVideoId = video.title.endsWith('.mp4') ? video.title.slice(0, -4) : video.title;
-            console.log(prevVideoId);
-            console.log(video.id);
+            // console.log(prevVideoId);
+            // console.log(video.id);
             const videoItem = document.createElement('div');
             videoItem.classList.add('videoItem');
             videoItem.onclick = () => {
