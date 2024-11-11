@@ -29,7 +29,7 @@ router.post('/videos', async (req, res) => {
     return res.json({ status: 'OK', videos, });
   }
   catch (err) {
-    // console.log(err);
+    console.log(err);
     res.status(500).json({ status: 'Error', message: "Blame Anna for not being able to retrieve videos" });
   }
 });
@@ -87,7 +87,7 @@ router.get('/thumbnail/:id', async (req, res) => {
 
 router.post('/view', async (req, res) => {
   const { id: videoId } = req.body;
-  // console.log(videoId);
+  console.log(videoId);
   const userId = req.session.userId;
   const user = await User.findById(userId);
   const viewed = user.watched.includes(videoId);
@@ -95,7 +95,7 @@ router.post('/view', async (req, res) => {
 
   if (!viewed) {
     user.watched.push(videoId);
-    // console.log(user.watched);
+    console.log(user.watched);
     await user.save();
   }
 
@@ -144,7 +144,6 @@ router.post('/like', async (req, res) => {
     res.status(200).json({
       status: 'OK',
       likes: video.like, // Ensure field names match schema
-      dislikes: video.dislike // Optional, if you want to return the dislike count
     });
 
   } catch (error) {
@@ -157,5 +156,25 @@ router.post('/like', async (req, res) => {
   }
 });
 
+router.get('/processing-status', async (req, res) => {
+  const userId = req.session.userId;
+  try {
+    const user = await User.findById(userId);
+    const videoIds = user.videos;
+    const videos = [];
+    for (let i = 0; i < videoIds.length; i++) {
+      const videoStats = await Video.findById(videoIds[i]);
+      let video = {
+        id: videoStats.id,
+        title: videoStats.title,
+        status: videoStats.status
+      }
+      videos.push(video);
+    }
+    return res.status(200).json({ status: 'OK', videos: videos })
+  } catch (err) {
+    res.status(200).json({ status: 'ERROR', error: true, message: err.message });
+  }
+});
 
 module.exports = router;
