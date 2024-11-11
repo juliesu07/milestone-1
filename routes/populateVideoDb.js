@@ -20,13 +20,14 @@ async function addVideosToDatabase() {
         const videoEntries = Object.entries(videoData);
         for (let [title, description] of videoEntries) {
             // const videoId = await getNextVideoId(); // Await here to get the ID
-
+            const count = await Video.countDocuments();
             const video = {
                 title: title,
                 description: description,
                 status: "complete",
                 like: 0,
-                dislike: 0
+                dislike: 0,
+                index: count
             };
 
             const newVideo = new Video(video);
