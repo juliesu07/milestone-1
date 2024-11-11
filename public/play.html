@@ -74,36 +74,40 @@
         let videoHistoryIndex = -1;
         let player = null; // Store player instance here
     
+        // Load the video
         async function loadVideo(id) {
             try {
+                // Clean up previous player instance
                 if (player) {
-                    player.reset(); // Clean up any previous player instance
+                    player.reset();
                 }
     
                 const mediaUrl = `http://130.245.136.220/media/${id}.mpd`;
+    
+                // Initialize the player asynchronously
                 player = dashjs.MediaPlayer().create();
                 player.setProtectionData({});
-                player.initialize(videoPlayer, mediaUrl, true);
-    
-                player.on(dashjs.MediaPlayer.events.ERROR, (e) => {
-                    console.error('Error occurred: ', e);
-                    errorDiv.textContent = 'Failed to load video. Please try again later.';
-                    errorDiv.style.display = 'block';
+                await new Promise((resolve, reject) => {
+                    player.initialize(videoPlayer, mediaUrl, false);
+                    player.on(dashjs.MediaPlayer.events.MANIFEST_LOADED, resolve);
+                    player.on(dashjs.MediaPlayer.events.ERROR, reject);
                 });
     
-                // Reset the UI and scroll position
+                // Update UI elements
                 playPauseBtn.textContent = 'Pause';
-                errorDiv.style.display = 'none';
                 currentVideoId = id;
                 setScrollToMiddle();
                 updateUrl(id);
     
-                // Track video as viewed
-                await fetch('/api/view', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: currentVideoId })
-                });
+                // Track video as viewed (API call in the background)
+                setTimeout(() => {
+                    fetch('/api/view', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: currentVideoId })
+                    });
+                }, 1000); // Delay the tracking call by 1 second to prevent blocking
+    
             } catch (error) {
                 console.error('Error loading video:', error);
                 errorDiv.textContent = 'Error loading video.';
@@ -111,32 +115,36 @@
             }
         }
     
+        // Update the URL based on the video ID
         function updateUrl(newId) {
             const newUrl = `/play/${newId}`;
             history.pushState(null, '', newUrl);
         }
     
+        // Set scroll position to the middle of the page
         function setScrollToMiddle() {
             const middleScroll = document.body.scrollHeight / 2 - window.innerHeight / 2;
             window.scrollTo(0, middleScroll);
         }
     
+        // Fetch the next video asynchronously
         async function fetchNewVideo() {
             try {
+                // If we're near the end of the video history, load more videos
                 if (videoHistoryIndex >= videoHistory.length - 5) {
                     const response = await fetch(`/api/randvideo/${currentVideoId}`);
                     const data = await response.json();
                     
                     if (data.status === 'OK') {
-                        videoHistory.push(...data.videoIds);
+                        videoHistory.push(...data.videoIds); // Append new videos
                     } else {
                         throw new Error('Failed to fetch new video');
                     }
                 }
     
-                const newId = videoHistory[videoHistoryIndex + 1];
-                loadVideo(newId);
-                videoHistoryIndex++;
+                const newId = videoHistory[videoHistoryIndex + 1]; // Get the next video ID
+                loadVideo(newId); // Load the new video
+                videoHistoryIndex++; // Increment the history index
             } catch (error) {
                 console.error('Error fetching new video:', error);
                 errorDiv.textContent = 'Error loading new video.';
@@ -144,16 +152,18 @@
             }
         }
     
+        // Load the previous video
         async function loadPreviousVideo() {
             if (videoHistoryIndex > 0) {
                 const previousVideoId = videoHistory[videoHistoryIndex - 1];
-                loadVideo(previousVideoId);
-                videoHistoryIndex--;
+                loadVideo(previousVideoId); // Load the previous video
+                videoHistoryIndex--; // Decrement the history index
             } else {
                 console.log("No previous video in history.");
             }
         }
     
+        // Like button handler
         document.getElementById('likeBtn').addEventListener('click', async (e) => {
             e.preventDefault();
             await fetch('/api/like', {
@@ -163,6 +173,7 @@
             });
         });
     
+        // Dislike button handler
         document.getElementById('dislikeBtn').addEventListener('click', async (e) => {
             e.preventDefault();
             await fetch('/api/like', {
@@ -172,6 +183,7 @@
             });
         });
     
+        // Play/Pause button handler
         playPauseBtn.addEventListener('click', () => {
             if (videoPlayer.paused) {
                 videoPlayer.play();
@@ -182,29 +194,31 @@
             }
         });
     
+        // Page load event listener
         window.addEventListener('load', () => {
             loadVideo(currentVideoId);
-            setScrollToMiddle();
+            setScrollToMiddle(); // Center scroll when page initially loads
         });
     
+        // Handle scrolling to fetch next/previous video
         window.addEventListener('wheel', (event) => {
-            if (event.deltaY > 0) {
+            if (event.deltaY > 0) { // Scroll down
                 fetchNewVideo();
-            } else if (event.deltaY < 0) {
+            } else if (event.deltaY < 0) { // Scroll up
                 loadPreviousVideo();
             }
         });
     
+        // Intersection Observer to load next video when the video container is out of view
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (!entry.isIntersecting) {
-                    fetchNewVideo();
+                    fetchNewVideo(); // Fetch next video when current video is out of view
                 }
             });
         }, { threshold: 0.1 });
     
         observer.observe(document.querySelector('#videoContainer'));
     </script>
-    
 </body>
-</html>
+</html
