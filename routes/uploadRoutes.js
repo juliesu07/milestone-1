@@ -44,11 +44,13 @@ router.post('/upload', upload, async (req, res) => {
   if (!req.file || !author || !title) { return res.status(200).json({ status: 'ERROR', error: true, message: 'Missing required fields (author, title, or video file)' }); }
 
   try {
+      const count = await Video.countDocuments();
       // Create the video document in the database with a 'processing' status
       const video = new Video({
           title: title,
           description: author,
           status: 'processing',  // Default status
+          index: count
       });
 
       // Save video document to database
