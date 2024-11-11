@@ -38,17 +38,20 @@ router.post('/videos', async (req, res) => {
 router.get('/randvideo/:eid', async (req, res) => {
   const { eid } = req.params;
   try {
-    // Use aggregate with $match and $sample to get 10 random videos excluding the one with eid
+    // Use aggregate with $match, $sample, and $project to get 10 random video IDs excluding the one with eid
     const videos = await Video.aggregate([
       { $match: { _id: { $ne: eid } } },
-      { $sample: { size: 10 } }
+      { $sample: { size: 10 } },
+      { $project: { _id: 1 } } // Only include the _id field
     ]);
 
     if (videos.length === 0) {
       return res.status(404).json({ status: 'Error', message: 'No other videos found.' });
     }
 
-    return res.json({ status: 'OK', videos });
+    // Extract the IDs into an array
+    const videoIds = videos.map(video => video._id);
+    return res.json({ status: 'OK', videoIds });
   } catch (error) {
     return res.status(500).json({ status: 'Error', message: 'Internal server error.' });
   }

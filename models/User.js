@@ -12,6 +12,7 @@ const userSchema = Schema({
   liked: [{type: Schema.Types.ObjectId, ref: 'Video'}],
   disliked: [{type: Schema.Types.ObjectId, ref: 'Video'}],
   watched: [{type: Schema.Types.ObjectId, ref: 'Video'}],
+  index: {type: Number},
 });
 
 userSchema.pre('save', async function (next) {
