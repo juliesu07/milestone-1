@@ -107,71 +107,55 @@ router.post('/like', async (req, res) => {
   const userId = req.session.userId;
 
   try {
-    // Fetch the user and video
     const user = await User.findById(userId);
     const video = await Video.findById(videoId);
+
     const liked = user.liked.includes(videoId);
     const disliked = user.disliked.includes(videoId);
 
-    const updateUser = {};
-    const updateVideo = {};
-
-    // Handle like action
-    if (value) {
-      if (liked) { // Remove from likes if already liked
-        updateUser.$pull = { liked: videoId };
-        updateVideo.$inc = { like: -1 };
-      } else { // Else Add to liked
-        if (disliked) { // Remove from dislikes if already disliked
-          updateUser.$pull = { disliked: videoId };
-          updateVideo.$inc = { dislike: -1 };
-        }
-        updateUser.$addToSet = { liked: videoId };
-        updateVideo.$inc = { like: 1 };
-      }
-    } else {
-      if (disliked) { // Remove from dislikes if already disliked
-        updateUser.$pull = { disliked: videoId };
-        updateVideo.$inc = { dislike: -1 };
-      } else { // Else Add to disliked
-        if (liked) { // Remove from likes if already liked
-          updateUser.$pull = { liked: videoId };
-          updateVideo.$inc = { like: -1 };
-        }
-        updateUser.$addToSet = { disliked: videoId };
-        updateVideo.$inc = { dislike: 1 };
-      }
+    // Prevent duplicate actions
+    if ((value && liked) || (!value && disliked)) {
+      return res.status(200).json({
+        status: 'ERROR',
+        error: true,
+        message: "The value that you want to set is the same"
+      });
     }
 
-    // Update user and video with atomic operations
-    await User.findByIdAndUpdate(userId, updateUser);
-    await Video.findByIdAndUpdate(videoId, updateVideo);
+    if (value) {
+      if (disliked) {
+        user.disliked.pull(videoId);
+        video.dislike -= 1; // Ensure field names match schema
+      }
+      user.liked.push(videoId);
+      video.like += 1; // Ensure field names match schema
+    } else {
+      if (liked) {
+        user.liked.pull(videoId);
+        video.like -= 1;
+      }
+      user.disliked.push(videoId);
+      video.dislike += 1;
+    }
 
-    res.status(200).json({ status: 'OK', likes: video.like });
-  } catch (err) {
-    res.status(200).json({ status: 'ERROR', error: true, message: err.message });
+    await user.save();
+    await video.save();
+
+    res.status(200).json({
+      status: 'OK',
+      likes: video.like, // Ensure field names match schema
+      dislikes: video.dislike // Optional, if you want to return the dislike count
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      status: 'ERROR',
+      error: true,
+      message: 'An error occurred while updating like status'
+    });
   }
 });
 
-router.get('/processing-status', async (req, res) => {
-    const userId = req.session.userId;
-    try {
-      const user = await User.findById(userId);
-      const videoIds = user.videos;
-      const videos = [];
-      for (let i = 0; i < videoIds.length; i++) {
-        const videoStats = await Video.findById(videoIds[i]);
-        let video = {
-          id: videoStats.id,
-          title: videoStats.title,
-          status: videoStats.status
-        }
-        videos.push(video);
-      }
-      return res.status(200).json({ status: 'OK', videos: videos })
-    } catch (err) {
-      res.status(200).json({ status: 'ERROR', error: true, message: err.message });
-    }
-});
 
 module.exports = router;
