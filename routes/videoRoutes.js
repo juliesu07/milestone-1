@@ -38,21 +38,22 @@ router.post('/videos', async (req, res) => {
 router.get('/randvideo/:eid', async (req, res) => {
   const { eid } = req.params;
   try {
-    // Query to get only the IDs of videos except the one with the specified eid
-    const videos = await Video.find({ _id: { $ne: eid } }).select('_id');
-    
-    if (videos.length === 0) { return res.status(404).json({ status: 'Error', message: 'No other videos found.' }); }
+    // Use aggregate with $match and $sample to get 10 random videos excluding the one with eid
+    const videos = await Video.aggregate([
+      { $match: { _id: { $ne: eid } } },
+      { $sample: { size: 10 } }
+    ]);
 
-    // Extract only the IDs into an array
-    const videoIds = videos.map(video => video._id);
+    if (videos.length === 0) {
+      return res.status(404).json({ status: 'Error', message: 'No other videos found.' });
+    }
 
-    // Get a random ID from the list of video IDs
-    const randomVideoId = videoIds[Math.floor(Math.random() * videoIds.length)];
-    return res.json({ status: 'OK', videoId: randomVideoId });
+    return res.json({ status: 'OK', videos });
   } catch (error) {
     return res.status(500).json({ status: 'Error', message: 'Internal server error.' });
   }
 });
+
 
 // GET /manifest/:id - Send DASH manifest for video with id :id
 router.get('/manifest/:id', async (req, res) => {

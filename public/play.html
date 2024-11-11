@@ -60,8 +60,8 @@
         <video id="videoPlayer" autoplay muted></video>
         <div id="controls">
             <div id="playPauseBtn">Pause</div>
-            <button id = 'likeBtn'>Like</button>
-            <button id = 'dislikeBtn'>Dislike</button>
+            <button id="likeBtn">Like</button>
+            <button id="dislikeBtn">Dislike</button>
         </div>
         <div id="error" style="display: none;"></div>
     </div>
@@ -71,14 +71,13 @@
         const errorDiv = document.getElementById('error');
         let currentVideoId = window.location.pathname.split('/').pop(); // Get the initial video ID from URL
         const videoHistory = []; // Stack to keep track of previously viewed videos
+        let videoHistoryIndex = -1; // Index to track position in videoHistory
 
-        function loadVideo(id) {
+        async function loadVideo(id) {
             const mediaUrl = `http://130.245.136.220/media/${id}.mpd`;
             const player = dashjs.MediaPlayer().create();
             player.setProtectionData({});
             
-            // console.log(mediaUrl);
-
             player.initialize(videoPlayer, mediaUrl, true); // Autoplay new video
             fetch('/api/view', { method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: currentVideoId })
@@ -101,23 +100,27 @@
         }
 
         function setScrollToMiddle() {
-            // Scroll to the middle of the page
             const middleScroll = document.body.scrollHeight / 2 - window.innerHeight / 2;
             window.scrollTo(0, middleScroll);
         }
 
         async function fetchNewVideo() {
             try {
-                const response = await fetch(`/api/randvideo/${currentVideoId}`);
-                const data = await response.json();
-                if (data.status === 'OK') {
-                    const newId = data.videoId;
-                    videoHistory.push(currentVideoId); // Push current video ID to history stack
-                    loadVideo(newId); // Load the new video
-                    updateUrl(newId); // Update the URL
-                } else {
-                    throw new Error('Failed to fetch new video');
+                // If we're at the end of the videoHistory or the last 5 videos, fetch more videos
+                if (videoHistoryIndex >= videoHistory.length - 5) {
+                    const response = await fetch(`/api/randvideo/${currentVideoId}`);
+                    const data = await response.json();
+                    if (data.status === 'OK') {
+                        videoHistory.push(...data.videoIds); // Append new videos
+                        videoHistoryIndex = videoHistory.length - 1; // Set index to last added video
+                    } else {
+                        throw new Error('Failed to fetch new video');
+                    }
                 }
+                const newId = videoHistory[videoHistoryIndex + 1]; // Get the next video ID
+                loadVideo(newId); // Load the new video
+                updateUrl(newId); // Update the URL
+                videoHistoryIndex++; // Increment the history index
             } catch (error) {
                 console.error('Error fetching new video:', error);
                 errorDiv.textContent = 'Error loading new video.';
@@ -126,10 +129,11 @@
         }
 
         async function loadPreviousVideo() {
-            if (videoHistory.length > 0) {
-                const previousVideoId = videoHistory.pop(); // Get the last video from history
+            if (videoHistoryIndex > 0) {
+                const previousVideoId = videoHistory[videoHistoryIndex - 1]; // Get the previous video from history
                 loadVideo(previousVideoId); // Load the previous video
                 updateUrl(previousVideoId); // Update the URL
+                videoHistoryIndex--; // Decrement the history index
             } else {
                 console.log("No previous video in history.");
             }
@@ -145,7 +149,7 @@
                 },
                 body: JSON.stringify({ id: currentVideoId, value: true })
             });
-        })
+        });
 
         document.getElementById('dislikeBtn').addEventListener('click', async (e) => {
             e.preventDefault();
@@ -157,9 +161,8 @@
                 },
                 body: JSON.stringify({id: currentVideoId, value: false})
             });
-        })
+        });
 
-        // Play/Pause button functionality
         playPauseBtn.addEventListener('click', () => {
             if (videoPlayer.paused) {
                 videoPlayer.play();
@@ -170,13 +173,11 @@
             }
         });
 
-        // Load the initial video and set initial scroll to middle
         window.addEventListener('load', () => {
             loadVideo(currentVideoId);
             setScrollToMiddle(); // Center scroll when page initially loads
         });
 
-        // Listen to wheel events for sensitive scroll detection
         window.addEventListener('wheel', (event) => {
             if (event.deltaY > 0) { // Scroll down
                 fetchNewVideo();
@@ -185,14 +186,13 @@
             }
         });
 
-        // Use Intersection Observer to detect when the video goes out of view
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (!entry.isIntersecting) { // If the video is out of view
                     fetchNewVideo();
                 }
             });
-        }, { threshold: 0.1 }); // Trigger when 10% of the video is visible
+        }, { threshold: 0.1 });
 
         observer.observe(document.querySelector('#videoContainer'));
     </script>
