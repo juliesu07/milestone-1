@@ -16,7 +16,8 @@ const PORT = process.env.PORT || 3000;
 const fs = require('fs');
 
 // MongoDB connection
-mongoose.connect('mongodb://130.245.136.220:27017/milestone-1')
+//mongoose.connect('mongodb://130.245.136.220:27017/milestone-1')
+mongoose.connect('mongodb://localhost:27017/milestone-1')
   .then(() => {
     console.log('MongoDB connected successfully');
   })
