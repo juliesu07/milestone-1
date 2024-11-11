@@ -10,6 +10,6 @@ redis_client = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 # Connect to MongoDB
 mongo_client = MongoClient('mongodb://localhost:27017/')
-db = mongo_client['videoApp']
+db = mongo_client['milestone-1']
 users_collection = db['users']
 videos_collection = db['videos']
