@@ -69,6 +69,8 @@
         let player = null;
         let videoLoadCount = 0;  // Counter to track number of videos loaded
         let currentVideoId = window.location.pathname.split('/').pop() || 'defaultId';  // Initialize currentVideoId with a fallback
+        let videoHistory = [];  // Stack to keep track of previously viewed videos
+        let videoHistoryIndex = -1;  // Initialize index to -1, so the first video will be at index 0
 
         async function loadVideo(id) {
             videoLoadCount++;
@@ -198,7 +200,6 @@
         }, { threshold: 0.1 });
 
         observer.observe(document.querySelector('#videoContainer'));
-
 
     </script>
 </body>
