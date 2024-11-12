@@ -132,7 +132,7 @@ router.get('/thumbnail/:id', async (req, res) => {
 
 router.post('/view', async (req, res) => {
   const { id: videoId } = req.body;
-  console.log(videoId);
+  // console.log(videoId);
   const userId = req.session.userId;
   const user = await User.findById(userId);
   const viewed = user.watched.includes(videoId);
@@ -140,7 +140,7 @@ router.post('/view', async (req, res) => {
 
   if (!viewed) {
     user.watched.push(videoId);
-    console.log(user.watched);
+    // console.log(user.watched);
     await user.save();
   }
 
