@@ -70,8 +70,8 @@
         let videoLoadCount = 0;  // Counter to track number of videos loaded
         let currentVideoId = window.location.pathname.split('/').pop() || 'defaultId';  // Initialize currentVideoId with a fallback
         let videoHistory = [];  // Stack to keep track of previously viewed videos
-        let videoHistoryIndex = -1;  // Initialize index to -1, so the first video will be at index 0
-
+        let videoHistoryIndex = 0;  // Initialize index to -1, so the first video will be at index 0
+        videoHistory.push(currentVideoId);
         async function loadVideo(id) {
             videoLoadCount++;
 
@@ -104,7 +104,7 @@
                 }
             });
 
-            player.initialize(videoPlayer, mediaUrl, true); // Autoplay new video
+            player.initialize(videoPlayer, mediaUrl, false); // Autoplay new video
 
             player.on('error', (e) => {
                 console.error('Error occurred: ', e);
@@ -112,7 +112,7 @@
                 errorDiv.style.display = 'block';
             });
 
-            playPauseBtn.textContent = 'Pause';
+            playPauseBtn.textContent = 'Play';
             currentVideoId = id;  // Update current video ID
             setScrollToMiddle();   // Set scroll position to middle when loading a new video
         }

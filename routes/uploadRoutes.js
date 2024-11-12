@@ -14,7 +14,6 @@ const router = express.Router();
 // Set FFmpeg binary path
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-// Set up multer storage configuration for video uploads
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, path.resolve(__dirname, '..', 'videos'));  // Ensure path resolves correctly
@@ -39,44 +38,50 @@ router.use(express.json());
 
 // Route to handle video upload
 router.post('/upload', upload, async (req, res) => {
-  const { author, title } = req.body;
-  const userId = req.session.userId;
-  if (!req.file || !author || !title) { return res.status(200).json({ status: 'ERROR', error: true, message: 'Missing required fields (author, title, or video file)' }); }
+    const { author, title } = req.body;
+    const userId = req.session.userId;
 
-  try {
-      const count = await Video.countDocuments();
-      // Create the video document in the database with a 'processing' status
-      const video = new Video({
-          title: title,
-          description: author,
-          status: 'processing',  // Default status
-          index: count
-      });
+    if (!req.file || !author || !title) {
+        return res.status(200).json({ status: 'ERROR', error: true, message: 'Missing required fields (author, title, or video file)' });
+    }
 
-      // Save video document to database
-      await video.save();
+    try {
+        // Create the video document in the database with a 'processing' status
+        const count = await Video.countDocuments();
+        const video = new Video({
+            title: title,
+            description: author,
+            status: 'processing',  // Default status
+            index: count
+        });
+        
+        // Save video document to database
+        await video.save();
+        
+        // Respond immediately with the video ID
+        res.status(200).send({ status: 'OK', id: video._id });
 
-      // Rename the uploaded file to the video document ID (Mongoose _id)
-      const newFileName = `${video._id}${path.extname(req.file.originalname)}`;
-      const oldFilePath = path.join(__dirname, '..', 'videos', req.file.filename);
-      const newFilePath = path.join(__dirname, '..', 'videos', newFileName);
+        // Background operations for renaming and processing video
+        const newFileName = `${video._id}${path.extname(req.file.originalname)}`;
+        const oldFilePath = path.join(__dirname, '..', 'videos', req.file.filename);
+        const newFilePath = path.join(__dirname, '..', 'videos', newFileName);
 
-      // Rename the file to the video document's ID (asynchronously)
-      fs.rename(oldFilePath, newFilePath, (err) => {
-          if (err) {
-              console.error('Error renaming file:', err);
-              return res.status(500).send('Error renaming file');
-          }
-          // Background process for video and thumbnail generation
-          backgroundProcessVideo(newFilePath, video._id);
-      });
+        fs.rename(oldFilePath, newFilePath, (err) => {
+            if (err) {
+                console.error('Error renaming file:', err);
+                return;
+            }
+            // Start background processing after renaming
+            backgroundProcessVideo(newFilePath, video._id);
+        });
 
-      await User.findByIdAndUpdate(userId, { $push: { videos: video._id } });
-      // Respond immediately after upload, with video ID
-      res.status(200).send({ status: 'OK', id: video._id });
-  } catch (error) {
-      res.status(200).json({ status: 'ERROR', error: true, message: error.message });
-  }
+        // Update user document with the video ID
+        await User.findByIdAndUpdate(userId, { $push: { videos: video._id } });
+
+    } catch (error) {
+        console.error(error);
+        res.status(200).json({ status: 'ERROR', error: true, message: error.message });
+    }
 });
 
 // Background function to handle video processing and status update
