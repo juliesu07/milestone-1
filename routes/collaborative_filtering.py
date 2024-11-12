@@ -49,7 +49,13 @@ def load_user_video_data():
                 video_index = video['index']
                 user_video_matrix[user_index, video_index] = -1
 
+        print("Shape of user_video_matrix:", user_video_matrix.shape)
+        print("Requested user index:", user_index)
     # Convert the matrix to a sparse format for efficiency
+        
+
+
+
     return csr_matrix(user_video_matrix)
 
 user_video_matrix = load_user_video_data()

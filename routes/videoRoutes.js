@@ -39,7 +39,7 @@ router.post('/videos', async (req, res) => {
     if (response) {
       // Parse the response and send it back to the client
       const recommendedVideos = JSON.parse(response.element).videos;
-      console.log(res)
+      console.log(recommendedVideos)
       return res.json({ status: 'OK', videos: recommendedVideos });
     } else {
       // If no response is received within the timeout, send an error
