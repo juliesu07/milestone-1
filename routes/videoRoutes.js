@@ -52,55 +52,28 @@ router.post('/videos', async (req, res) => {
   }
 });
 
-
-
-
-// Get count number of video entires
-// router.post('/videos', async (req, res) => {
-//   const { count} = req.body;
-//   const userId = req.session.userId;
-
+// Send Random Video that does not match eid
+// router.get('/randvideo/:eid', async (req, res) => {
+//   const { eid } = req.params;
 //   try {
-//     const videoEntries = await Video.find({}).limit(count);
-//     const user = await User.findById(userId);
-//     const videos = videoEntries.map(({_id, description, title, like}) => ({
-//       id: _id,
-//       description: description,
-//       title: title,
-//       watched: user.watched.includes(_id),
-//       liked: user.liked.includes(_id),
-//       likevalues: like,
-//     }));
-//     return res.json({ status: 'OK', videos, });
-//   }
-//   catch (err) {
-//     console.log(err);
-//     res.status(500).json({ status: 'Error', message: "Blame Anna for not being able to retrieve videos" });
+//     // Use aggregate with $match, $sample, and $project to get 10 random video IDs excluding the one with eid
+//     const videos = await Video.aggregate([
+//       { $match: { _id: { $ne: eid } } },
+//       { $sample: { size: 10 } },
+//       { $project: { _id: 1 } } // Only include the _id field
+//     ]);
+
+//     if (videos.length === 0) {
+//       return res.status(200).json({ status: 'ERROR', error: true, message: err.message });
+//     }
+
+//     // Extract the IDs into an array
+//     const videoIds = videos.map(video => video._id);
+//     return res.json({ status: 'OK', videoIds });
+//   } catch (error) {
+//     return res.status(200).json({ status: 'ERROR', error: true, message: err.message });
 //   }
 // });
-
-// Send Random Video that does not match eid
-router.get('/randvideo/:eid', async (req, res) => {
-  const { eid } = req.params;
-  try {
-    // Use aggregate with $match, $sample, and $project to get 10 random video IDs excluding the one with eid
-    const videos = await Video.aggregate([
-      { $match: { _id: { $ne: eid } } },
-      { $sample: { size: 10 } },
-      { $project: { _id: 1 } } // Only include the _id field
-    ]);
-
-    if (videos.length === 0) {
-      return res.status(200).json({ status: 'ERROR', error: true, message: err.message });
-    }
-
-    // Extract the IDs into an array
-    const videoIds = videos.map(video => video._id);
-    return res.json({ status: 'OK', videoIds });
-  } catch (error) {
-    return res.status(200).json({ status: 'ERROR', error: true, message: err.message });
-  }
-});
 
 
 // GET /manifest/:id - Send DASH manifest for video with id :id
@@ -160,11 +133,7 @@ router.post('/like', async (req, res) => {
 
     // Prevent duplicate actions
     if ((value && liked) || (!value && disliked)) {
-      return res.status(200).json({
-        status: 'ERROR',
-        error: true,
-        message: "The value that you want to set is the same"
-      });
+      return res.status(200).json({ status: 'ERROR', error: true, message: "The value that you want to set is the same" });
     }
 
     if (value) {
@@ -186,18 +155,10 @@ router.post('/like', async (req, res) => {
     await user.save();
     await video.save();
 
-    res.status(200).json({
-      status: 'OK',
-      likes: video.like, // Ensure field names match schema
-    });
-
+    res.status(200).json({ status: 'OK', likes: video.like });
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      status: 'ERROR',
-      error: true,
-      message: 'An error occurred while updating like status'
-    });
+    res.status(500).json({ status: 'ERROR', error: true, message: 'An error occurred while updating like status' });
   }
 });
 

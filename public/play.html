@@ -171,13 +171,8 @@
                     });
                         
                     const data = await response.json();
-                    // console.log(data);
-                    if (response.ok) {
-                        // Push the videos into the history
-                        videoHistory.push(...data.videos);
-                    } else {
-                        throw new Error('Failed to fetch new video');
-                    }
+                    if (data.status) { videoHistory.push(...data.videos); } 
+                    else { console.log(data); }
                 }
 
                 // Get the next video ID from videoHistory
@@ -189,7 +184,7 @@
                     videoHistoryIndex++;
                 }
             } catch (error) {
-                console.error('Error fetching new video:', error);
+                console.log('Error fetching new video:', error);
             }
         }
 
