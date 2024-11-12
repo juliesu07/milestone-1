@@ -38,7 +38,7 @@ router.use(express.json());
 
 // Route to handle video upload
 router.post('/upload', async (req, res, next) => {
-    const { author, title } = req.body;
+    const { author, title, mp4File } = req.body;
     const userId = req.session.userId;
 
     if (!author || !title) {
