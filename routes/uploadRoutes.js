@@ -37,12 +37,12 @@ const upload = multer({
 router.use(express.json());
 
 // Route to handle video upload
-router.post('/upload', upload, async (req, res) => {
+router.post('/upload', async (req, res, next) => {
     const { author, title } = req.body;
     const userId = req.session.userId;
 
-    if (!req.file || !author || !title) {
-        return res.status(200).json({ status: 'ERROR', error: true, message: 'Missing required fields (author, title, or video file)' });
+    if (!author || !title) {
+        return res.status(400).json({ status: 'ERROR', error: true, message: 'Missing required fields (author or title)' });
     }
 
     try {
@@ -56,30 +56,46 @@ router.post('/upload', upload, async (req, res) => {
         });
         
         // Save video document to database
-	res.status(200).send({ status: 'OK', id: video._id });
         await video.save();
-        
 
-        // Background operations for renaming and processing video
-        const newFileName = `${video._id}${path.extname(req.file.originalname)}`;
-        const oldFilePath = path.join(__dirname, '..', 'videos', req.file.filename);
-        const newFilePath = path.join(__dirname, '..', 'videos', newFileName);
+        // Send the response right after saving the video
+        res.status(200).send({ status: 'OK', id: video._id });
 
-        fs.rename(oldFilePath, newFilePath, (err) => {
+        // Now handle the file upload
+        upload(req, res, async (err) => {
             if (err) {
-                console.error('Error renaming file:', err);
-                return;
+                console.error('File upload error:', err);
+                return res.status(400).json({ status: 'ERROR', error: true, message: 'File upload failed' });
             }
-            // Start background processing after renaming
-            backgroundProcessVideo(newFilePath, video._id);
+
+            if (!req.file) {
+                return res.status(400).json({ status: 'ERROR', error: true, message: 'No file uploaded' });
+            }
+
+            // Rename and move the uploaded file after responding to the client
+            const newFileName = `${video._id}${path.extname(req.file.originalname)}`;
+            const oldFilePath = path.join(__dirname, '..', 'videos', req.file.filename);
+            const newFilePath = path.join(__dirname, '..', 'videos', newFileName);
+
+            fs.rename(oldFilePath, newFilePath, async (err) => {
+                if (err) {
+                    console.error('Error renaming file:', err);
+                    return;
+                }
+
+                // Start background processing after renaming
+                await backgroundProcessVideo(newFilePath, video._id);
+
+                // Update the video status after processing is done
+                await Video.findByIdAndUpdate(video._id, { status: 'processed' });
+
+                // Update user document with the video ID
+                await User.findByIdAndUpdate(userId, { $push: { videos: video._id } });
+            });
         });
-
-        // Update user document with the video ID
-        await User.findByIdAndUpdate(userId, { $push: { videos: video._id } });
-
     } catch (error) {
         console.error(error);
-        res.status(200).json({ status: 'ERROR', error: true, message: error.message });
+        res.status(500).json({ status: 'ERROR', error: true, message: error.message });
     }
 });
 

@@ -21,7 +21,7 @@ client.on('error', (err) => console.error('Redis Client Error', err));
 router.post('/videos', async (req, res) => {
   const { count} = req.body;
   const userId = req.session.userId;
-  // PLEASE READ add ml library, im just editing the format of the json 
+  // PLEASE READ add ml library, im just editing the format of the json
 
   // Unique request ID to track this specific recommendation request
   const requestId = uuidv4();
@@ -35,7 +35,7 @@ router.post('/videos', async (req, res) => {
   try {
     // Block until the response arrives or a timeout occurs (30 seconds)
     const response = await client.blPop(responseKey, 30);  // Using blPop in Redis v4.x
-    
+
     if (response) {
       // Parse the response and send it back to the client
       const recommendedVideos = JSON.parse(response.element).videos;
@@ -43,7 +43,7 @@ router.post('/videos', async (req, res) => {
       return res.json({ status: 'OK', videos: recommendedVideos });
     } else {
       // If no response is received within the timeout, send an error
-      return res.status(200).json({ status: 'ERROR', error: true, message: err.message });
+      return res.status(200).json({ status: 'ERROR', error: true, message:"no response from timeout" });
     }
   } catch (err) {
     // Handle any unexpected errors
@@ -51,30 +51,6 @@ router.post('/videos', async (req, res) => {
     return res.status(200).json({ status: 'ERROR', error: true, message: err.message });
   }
 });
-
-// Send Random Video that does not match eid
-// router.get('/randvideo/:eid', async (req, res) => {
-//   const { eid } = req.params;
-//   try {
-//     // Use aggregate with $match, $sample, and $project to get 10 random video IDs excluding the one with eid
-//     const videos = await Video.aggregate([
-//       { $match: { _id: { $ne: eid } } },
-//       { $sample: { size: 10 } },
-//       { $project: { _id: 1 } } // Only include the _id field
-//     ]);
-
-//     if (videos.length === 0) {
-//       return res.status(200).json({ status: 'ERROR', error: true, message: err.message });
-//     }
-
-//     // Extract the IDs into an array
-//     const videoIds = videos.map(video => video._id);
-//     return res.json({ status: 'OK', videoIds });
-//   } catch (error) {
-//     return res.status(200).json({ status: 'ERROR', error: true, message: err.message });
-//   }
-// });
-
 
 // GET /manifest/:id - Send DASH manifest for video with id :id
 router.get('/manifest/:id', async (req, res) => {
