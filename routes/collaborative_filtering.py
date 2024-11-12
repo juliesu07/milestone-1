@@ -14,14 +14,14 @@ redis_client = redis.StrictRedis(host='localhost', port=6379, db=0)
 # Connect to MongoDB
 mongo_client = MongoClient('mongodb://localhost:27017/')
 db = mongo_client['milestone-1']
-users_collection = db['users']
-videos_collection = db['videos']
 
 # user_id = ObjectId('673284dc9b55b05c1c76664b')
 # print(users_collection.find_one({'_id': user_id}))
 
 # Load or Update Collaborative Filtering Model
 def load_user_video_data():
+    users_collection = db['users']
+    videos_collection = db['videos']
     # Fetch all users and videos from MongoDB
     users = list(users_collection.find())
     videos = list(videos_collection.find())
@@ -52,17 +52,18 @@ def load_user_video_data():
         print("Shape of user_video_matrix:", user_video_matrix.shape)
         print("Requested user index:", user_index)
     # Convert the matrix to a sparse format for efficiency
-        
-
-
 
     return csr_matrix(user_video_matrix)
 
-user_video_matrix = load_user_video_data()
-model = AlternatingLeastSquares(factors=10, regularization=0.1)
-model.fit(user_video_matrix.T)  # Training model on the transposed matrix
-
 def recommend_videos(user_id_str, count):
+
+    users_collection = db['users']
+    videos_collection = db['videos']
+    
+    user_video_matrix = load_user_video_data()
+    model = AlternatingLeastSquares(factors=10, regularization=0.1)
+    model.fit(user_video_matrix.T)  # Training model on the transposed matrix
+
     # Convert user_id from string to ObjectId
     user_id = ObjectId(user_id_str)
     # Get the user's index and watched videos from the database
