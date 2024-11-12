@@ -56,10 +56,9 @@ router.post('/upload', upload, async (req, res) => {
         });
         
         // Save video document to database
+	res.status(200).send({ status: 'OK', id: video._id });
         await video.save();
         
-        // Respond immediately with the video ID
-        res.status(200).send({ status: 'OK', id: video._id });
 
         // Background operations for renaming and processing video
         const newFileName = `${video._id}${path.extname(req.file.originalname)}`;
