@@ -14,7 +14,7 @@ router.post('/adduser', async (req, res) => {
 
   try {
     const { username, password, email } = req.body;
-    console.log('Email being used:', email); // Log the email for debugging purposes
+    // console.log('Email being used:', email); // Log the email for debugging purposes
 
     // Check for existing user
     const existingUser = await User.findOne({ $or: [{ username }, { email }] });
@@ -42,23 +42,23 @@ router.post('/adduser', async (req, res) => {
     // Sending email
     await transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
-        console.error('Error sending email:', error); // Log the error
+        // console.error('Error sending email:', error); // Log the error
         return res.status(200).json({ status: 'ERROR', error:true, message: 'Failed to send verification email.' });
       }
-      console.log('Email sent:', info.response); // Log success
+      // console.log('Email sent:', info.response); // Log success
     });
     res.status(200).json({ status: 'OK' });
   } catch (error) {
-    console.error('Error occurred during user creation:', error); // Log the error
+    // console.error('Error occurred during user creation:', error); // Log the error
     res.status(200).json({ status: 'ERROR', error:true, message: error.message });
   }
 });
 
 // Verify user
 router.get('/verify', async (req, res) => {
-  console.log(req.query);
+  // console.log(req.query);
   const { email, key } = req.query;
-  console.log("pass");
+  // console.log("pass");
   const decodedEmail = Buffer.from(key, 'base64').toString('utf-8');
 
   if (decodedEmail !== email) {
