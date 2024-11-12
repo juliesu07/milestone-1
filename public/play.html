@@ -143,6 +143,12 @@
             playPauseBtn.textContent = 'Play';
             currentVideoId = id;
             setScrollToMiddle();
+
+            fetch('/api/view', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ videoId: id })
+            });
         }
 
         function updateUrl(newId) {
