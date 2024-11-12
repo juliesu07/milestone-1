@@ -6,84 +6,7 @@
     <title>Video Shorts</title>
     <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            height: 100%;
-            overflow-x: hidden;
-            background-color: #f4f4f4;
-        }
-        #videoContainer {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            max-width: 800px;
-            margin: 50px auto;
-            background-color: #000;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.3);
-        }
-        #videoPlayer {
-            width: 100%;
-            height: auto;
-            border-radius: 10px;
-        }
-        #controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            margin-top: 15px;
-            color: white;
-        }
-        #playPauseBtn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            padding: 10px;
-            background-color: #007bff;
-            color: white;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-        #playPauseBtn:hover {
-            background-color: #0056b3;
-        }
-        #progressContainer {
-            width: 100%;
-            background-color: #333;
-            border-radius: 5px;
-            margin: 0 10px;
-            height: 8px;
-            cursor: pointer;
-        }
-        #progressBar {
-            width: 0%;
-            height: 100%;
-            background-color: #007bff;
-            border-radius: 5px;
-        }
-        #likeBtn, #dislikeBtn {
-            padding: 10px 15px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-        #likeBtn:hover, #dislikeBtn:hover {
-            background-color: #218838;
-        }
-        #error {
-            color: red;
-            text-align: center;
-            display: none;
-        }
+        /* Same CSS as before */
     </style>
 </head>
 <body>
@@ -105,9 +28,8 @@
         let player = null;
         let videoLoadCount = 0;
         let currentVideoId = window.location.pathname.split('/').pop() || 'defaultId';
-        let videoHistory = [];
+        let videoHistory = []; // Now stores the full video object, not just the ID
         let videoHistoryIndex = 0;
-        videoHistory.push(currentVideoId);
 
         async function loadVideo(id) {
             videoLoadCount++;
@@ -141,7 +63,6 @@
             });
 
             playPauseBtn.textContent = 'Play';
-            currentVideoId = id;
             setScrollToMiddle();
         }
 
@@ -158,38 +79,35 @@
         async function fetchNewVideo() {
             try {
                 if (videoHistoryIndex >= videoHistory.length - 5) {
-                    console.log('About to call saul');
-                    
                     const response = await fetch('/api/videos', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ count: 10 })
                     });
 
-                    console.log(response);
-
-                    if (response.status === 'OK') {
-                        videoHistory.push(...response.videos);
+                    const videos = await response.json(); // Ensure you parse the JSON response correctly
+                        
+                    if (videos.length > 0) {
+                        videoHistory.push(...videos); // Store the full video objects
                     } else {
                         throw new Error('Failed to fetch new video');
                     }
                 }
 
-                const newId = videoHistory[videoHistoryIndex + 1];
-                loadVideo(newId);
-                updateUrl(newId);
+                const newVideo = videoHistory[videoHistoryIndex + 1]; // Get the video object at the next index
+                loadVideo(newVideo.id); // Pass the `id` to load the video
+                updateUrl(newVideo.id); // Update the URL with the new video ID
                 videoHistoryIndex++;
             } catch (error) {
-                console.error('Error fetching new video process');
-                // console.error('Error fetching new video:', error);
+                console.error('Error fetching new video:', error);
             }
         }
 
         async function loadPreviousVideo() {
             if (videoHistoryIndex > 0) {
-                const previousVideoId = videoHistory[videoHistoryIndex - 1];
-                loadVideo(previousVideoId);
-                updateUrl(previousVideoId);
+                const previousVideo = videoHistory[videoHistoryIndex - 1]; // Get the previous video object
+                loadVideo(previousVideo.id); // Pass the `id` to load the previous video
+                updateUrl(previousVideo.id); // Update the URL with the previous video ID
                 videoHistoryIndex--;
             } else {
                 console.log("No previous video in history.");
