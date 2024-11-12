@@ -118,7 +118,8 @@
                 player = null;
             }
             
-            const mediaUrl = `http://130.245.136.220/media/${id}.mpd`;
+            // const mediaUrl = `http://130.245.136.220/media/${id}.mpd`;
+            const mediaUrl = `/media/${id}.mpd`;
 
             // Initialize the player
             player = dashjs.MediaPlayer().create();
