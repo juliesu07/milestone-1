@@ -55,11 +55,12 @@ router.post('/upload', async (req, res, next) => {
             index: count
         });
         
+        // Send the response right after saving the video
+        res.status(200).send({ status: 'OK', id: video._id });
         // Save video document to database
         await video.save();
 
-        // Send the response right after saving the video
-        res.status(200).send({ status: 'OK', id: video._id });
+        
 
         // Now handle the file upload
         upload(req, res, async (err) => {
