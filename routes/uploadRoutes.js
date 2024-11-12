@@ -40,7 +40,9 @@ router.use(express.json());
 router.post('/upload', async (req, res, next) => {
     const { author, title, mp4File } = req.body;
     const userId = req.session.userId;
-
+    console.log(req.body);
+    console.log(author);
+    console.log(title);
     if (!author || !title) {
         return res.status(400).json({ status: 'ERROR', error: true, message: 'Missing required fields (author or title)' });
     }
