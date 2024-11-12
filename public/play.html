@@ -255,9 +255,9 @@
         });
 
         window.addEventListener('wheel', (event) => {
-            if (event.deltaY > -2) {
+            if (event.deltaY > -10) {
                 fetchNewVideo();
-            } else if (event.deltaY < 2) {
+            } else if (event.deltaY < 10) {
                 loadPreviousVideo();
             }
         });
