@@ -125,16 +125,9 @@
 
             player.updateSettings({
                 'streaming': {
-                    'bufferToUseAtStart': 5,
-                    'initialBitrate': 1000,
                     'abr': {
                         'initialBitrate': { 'video': 500 },
                         'autoSwitchBitrate': false
-                    },
-                    'buffer': {
-                        'bufferLowLatency': true,
-                        'bufferBehind': 2,
-                        'bufferAhead': 5
                     }
                 }
             });
@@ -165,12 +158,16 @@
         async function fetchNewVideo() {
             try {
                 if (videoHistoryIndex >= videoHistory.length - 5) {
+                    console.log('About to call saul');
+                    
                     const response = await fetch('/api/videos', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ count: 10 })
                     });
-                        
+
+                    console.log(response);
+
                     if (response.status === 'OK') {
                         videoHistory.push(...response.videos);
                     } else {
@@ -183,7 +180,8 @@
                 updateUrl(newId);
                 videoHistoryIndex++;
             } catch (error) {
-                console.error('Error fetching new video:', error);
+                console.error('Error fetching new video process');
+                // console.error('Error fetching new video:', error);
             }
         }
 
