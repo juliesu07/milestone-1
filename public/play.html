@@ -168,7 +168,7 @@
                     console.log(data);
                     if (response.ok) {
                         // Push the videos into the history
-                        videoHistory.push(...data);
+                        videoHistory.push(...data.videos);
                     } else {
                         throw new Error('Failed to fetch new video');
                     }
