@@ -111,16 +111,20 @@
 
         async function loadVideo(id) {
             videoLoadCount++;
-
-            if (videoLoadCount >= 5) {
-                if (player) {
-                    player.reset();
-                }
-                videoLoadCount = 0;
+            
+            // Reset player if a video load count limit is reached or if player exists
+            if (player) {
+                player.reset();
+                player = null;
             }
-
+            
             const mediaUrl = `http://130.245.136.220/media/${id}.mpd`;
+
+            // Initialize the player
             player = dashjs.MediaPlayer().create();
+            player.initialize(videoPlayer, mediaUrl, false);
+            
+            // Optional protection data setup (remove if not needed)
             player.setProtectionData({});
 
             player.updateSettings({
@@ -132,19 +136,19 @@
                 }
             });
 
-            player.initialize(videoPlayer, mediaUrl, false);
-
+            // Error handling
             player.on('error', (e) => {
-                console.error('Error occurred: ', e);
-                errorDiv.textContent = 'Failed to load video. Please try again later.';
-                errorDiv.style.display = 'block';
+                console.error('Error occurred:', e);
+                document.getElementById('error').textContent = 'Failed to load video. Please try again later.';
+                document.getElementById('error').style.display = 'block';
             });
 
             playPauseBtn.textContent = 'Play';
             currentVideoId = id;
             setScrollToMiddle();
 
-            fetch('/api/view', {
+            // Record view
+            await fetch('/api/view', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: currentVideoId })
@@ -169,13 +173,14 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ count: 10 })
                     });
-                        
                     const data = await response.json();
-                    if (data.status) { videoHistory.push(...data.videos); } 
-                    else { console.log(data); }
+                    if (data.status) {
+                        videoHistory.push(...data.videos);
+                    } else {
+                        console.log(data);
+                    }
                 }
 
-                // Get the next video ID from videoHistory
                 const nextVideo = videoHistory[videoHistoryIndex + 1];
                 if (nextVideo) {
                     const newId = nextVideo.id;
@@ -204,7 +209,7 @@
 
         document.getElementById('likeBtn').addEventListener('click', async (e) => {
             e.preventDefault();
-            const response = await fetch('/api/like', {
+            await fetch('/api/like', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: currentVideoId, value: true })
@@ -213,7 +218,7 @@
 
         document.getElementById('dislikeBtn').addEventListener('click', async (e) => {
             e.preventDefault();
-            const response = await fetch('/api/like', {
+            await fetch('/api/like', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: currentVideoId, value: false })
@@ -265,6 +270,7 @@
         }, { threshold: 0.1 });
 
         observer.observe(document.querySelector('#videoContainer'));
+
     </script>
 </body>
 </html>
