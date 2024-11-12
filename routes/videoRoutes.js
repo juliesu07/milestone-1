@@ -58,13 +58,34 @@ router.get('/manifest/:id', async (req, res) => {
     try {
       const manifestPath = path.join(__dirname, '../media', `${videoId}.mpd`);
       res.sendFile(manifestPath, err => {
-        if (err) { res.status(err.status).end(); }
+        if (err) { res.status(200).json({ status: 'ERROR', error: true, message: err.message });}
       });
     } catch (err) {
       res.status(200).json({ status: 'ERROR', error: true, message: err.message });
     }
 });
 
+router.get('/getVideo/:id', async (req, res) => {
+    console.log("hello");
+    const videoId = req.params.id;
+    const userId = req.session.userId;
+    try {
+      const video = await Video.findById(videoId);
+      const user = await User.findById(userId);
+      return res.status(200).json({
+        id: video.id,
+        description: video.description,
+        title: video.title,
+        watched: user.watched.includes(video.id),
+        liked: user.liked.includes(video.id),
+        likevalues: video.like,
+      });
+    }
+    catch (err)
+    {
+      res.status(200).json({status: 'ERROR', error: true, message: err.message});
+    }
+});
 
 // GET /thumbnail/:id - Send thumbnail for video with id :id
 router.get('/thumbnail/:id', async (req, res) => {
@@ -72,7 +93,7 @@ router.get('/thumbnail/:id', async (req, res) => {
     try {
       const thumbnailPath = path.join(__dirname, '../thumbnails', `${videoId}.jpg`); // Adjust based on your video naming convention
       res.sendFile(thumbnailPath, err => {
-        if (err) { res.status(err.status).end(); }
+        if (err) { res.status(200).json({ status: 'ERROR', error: true, message: err.message }); }
       });
     } catch (err) {
       res.status(200).json({ status: 'ERROR', error: true, message: 'An error occurred' })
@@ -134,7 +155,7 @@ router.post('/like', async (req, res) => {
     res.status(200).json({ status: 'OK', likes: video.like });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ status: 'ERROR', error: true, message: 'An error occurred while updating like status' });
+    res.status(200).json({ status: 'ERROR', error: true, message: 'An error occurred while updating like status' });
   }
 });
 

@@ -62,13 +62,16 @@ def recommend_videos(user_id_str, count):
         videos_collection = db['videos']
         
         user_video_matrix = load_user_video_data()
+        # After loading user_video_matrix
+        print("User-Video Interaction Matrix")
+        print(user_video_matrix.toarray())  # This will print the dense version of the sparse matrix
         if user_video_matrix is None:
             raise ValueError("user_video_matrix could not be loaded or is empty.")
         
         print("Shape of user_video_matrix:", user_video_matrix.shape)
-
-        model = LightFM(no_components=10, loss='warp')  # WARP loss for implicit feedback
-        model.fit(user_video_matrix, epochs=30, num_threads=4)  # Training the model
+        #LightFM(no_components=5, loss='warp'
+        model = LightFM(no_components=5, loss='warp')  # WARP loss for implicit feedback
+        model.fit(user_video_matrix, epochs=30, num_threads=2)  # Training the model
 
         # Convert user_id from string to ObjectId
         user_id = ObjectId(user_id_str)
@@ -80,17 +83,13 @@ def recommend_videos(user_id_str, count):
         watched_videos = user_data.get("watched", [])
         
         # Generate initial recommendations based on collaborative filtering
-        N = min(count, user_video_matrix.shape[1])
+        # N = min(count, user_video_matrix.shape[1])
         print("Generating recommendations for user index:", user_index)
 
         try:
-            print("row")
-            print(user_video_matrix.shape[0])
-            print("col")
-            print(user_video_matrix.shape[1])
             # Get the top N recommendations for the user
             scores = model.predict(user_index, np.arange(user_video_matrix.shape[1]))
-            top_indices = np.argsort(-scores)[:N]
+            top_indices = np.argsort(-scores)[:count]
 
             # Fetch all videos from MongoDB and map indices to video IDs
             videos = list(videos_collection.find())
@@ -121,8 +120,8 @@ def recommend_videos(user_id_str, count):
                     "id": str(video["_id"]),
                     "description": video["description"],
                     "title": video["title"],
-                    "watched": video["_id"] in watched_videos,
-                    "liked": video["_id"] in user_data.get("liked", []),
+                    "watched": str(video["_id"]) in watched_videos,
+                    "liked": str(video["_id"]) in user_data.get("liked", []),
                     "likevalues": video["like"]
                 }
                 for video in videos_collection.find({"_id": {"$in": recommended_video_ids}})
@@ -153,6 +152,7 @@ while True:
         
         # Generate recommendations
         recommended_videos = recommend_videos(user_id, count)
+        print(recommended_videos)
         
         # Send response back to Node.js via Redis
         response_key = f"recommendation_response_{request_id}"

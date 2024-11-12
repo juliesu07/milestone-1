@@ -6,7 +6,6 @@
     <title>Video Shorts</title>
     <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
     <style>
-        /* Styles remain the same */
         body, html {
             margin: 0;
             padding: 0;
@@ -15,277 +14,275 @@
             overflow-x: hidden;
             background-color: #f4f4f4;
         }
-        #videoContainer {
+    
+        .videoContainer {
+            flex-grow: 1;
             display: flex;
             flex-direction: column;
+            height: 100vh;
             align-items: center;
-            justify-content: center;
-            max-width: 800px;
-            margin: 50px auto;
-            background-color: #000;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.3);
+            justify-content: flex-start;
+            overflow: hidden;
+            position: relative;
         }
-        #videoPlayer {
+    
+        .videoItem {
             width: 100%;
-            height: auto;
-            border-radius: 10px;
-        }
-        #controls {
+            height: 100vh;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            margin-top: 15px;
-            color: white;
-        }
-        #playPauseBtn {
-            display: flex;
-            align-items: center;
             justify-content: center;
-            cursor: pointer;
-            padding: 10px;
-            background-color: #007bff;
-            color: white;
-            border-radius: 5px;
+            align-items: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;  /* Start with videos hidden */
+            visibility: hidden;  /* Start with videos hidden */
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+    
+        .buttonsContainer {
+            display: flex;
+            flex-direction: row;
+            position: relative;
+            padding-left: 20px;
+            padding-top: 20px;
+            gap: 10px; /* Space between like and dislike buttons */
+            visibility: hidden;  /* Hide buttons initially */
+        }
+    
+        button {
             font-size: 16px;
-        }
-        #playPauseBtn:hover {
-            background-color: #0056b3;
-        }
-        #progressContainer {
-            width: 100%;
-            background-color: #333;
+            padding: 12px 24px;
             border-radius: 5px;
-            margin: 0 10px;
-            height: 8px;
             cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
         }
-        #progressBar {
-            width: 0%;
-            height: 100%;
+    
+        /* Style the Like and Dislike buttons */
+        .buttonsContainer button {
+            border: 2px solid #007bff;
+            background-color: #fff;
+            color: #007bff;
+        }
+    
+        .buttonsContainer button:hover {
             background-color: #007bff;
-            border-radius: 5px;
+            color: white;
+            transform: scale(1.05);
         }
-        #like, #dislike {
-            padding: 10px 15px;
+    
+        .buttonsContainer button[name="like"] {
+            border-color: #28a745;
+            color: #28a745;
+        }
+    
+        .buttonsContainer button[name="like"]:hover {
             background-color: #28a745;
             color: white;
+        }
+    
+        .buttonsContainer button[name="dislike"] {
+            border-color: #dc3545;
+            color: #dc3545;
+        }
+    
+        .buttonsContainer button[name="dislike"]:hover {
+            background-color: #dc3545;
+            color: white;
+        }
+    
+        /* Sticky Play/Pause Button */
+        #playPauseBtn {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+        }
+    
+        #playPauseBtn button {
+            font-size: 18px;
+            padding: 15px 30px;
+            background-color: #007bff;
+            color: white;
             border: none;
-            border-radius: 5px;
-            font-size: 14px;
+            border-radius: 50px;
             cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
         }
-        #like:hover, #dislike:hover {
-            background-color: #218838;
+    
+        #playPauseBtn button:hover {
+            background-color: #0056b3;
+            transform: scale(1.1);
         }
-        #error {
-            color: red;
-            text-align: center;
-            display: none;
-        }
-    </style>
+    </style>    
 </head>
 <body>
-    <div id="videoContainer">
-        <video id="videoPlayer" muted></video>
-        <div id="controls">
-            <div id="playPauseBtn">Play</div>
-            <div id="progressContainer">
-                <div id="progressBar"></div>
-            </div>
-            <div>
-                <button id="like">like</button>
-                <button id="dislike">dislike</button>
-            </div>
-        </div>
-        <div id="error"></div>
+    <div id="playPauseBtn">
+        <button>Play/Pause</button>
+    </div>
+    <div class="videoContainer" id="videoList">
+        <!-- Videos will be dynamically added here -->
     </div>
 
-    <!-- Hidden container to preload videos -->
-    <div id="preloadContainer" style="display: none;"></div>
-
     <script>
-        let player = null;
-        let videoLoadCount = 0;
+        const playPauseBtn = document.getElementById('playPauseBtn').querySelector('button');
+        
         let currentVideoId = window.location.pathname.split('/').pop() || 'defaultId';
-        let videoHistory = [];
-        let videoHistoryIndex = 0;
-        videoHistory.push(currentVideoId);
+        let historyIndex = 0;
+        let watchHistory = [];
+        let currentPlayer = null;
 
-        async function loadVideo(id) {
-            videoLoadCount++;
-            if (player) {
-                player.reset();
-                player = null;
+        // Function to create video DOM elements
+        function createVideoPlayer(videoId) {
+            const videoItem = document.createElement('div');
+            videoItem.classList.add('videoItem');
+            videoItem.id = `videoPlayer_${videoId}`;  // Assign ID for easy reference
+
+            const videoElement = document.createElement('video');
+            videoElement.setAttribute('controls', true);
+            videoElement.style.width = "70%";
+
+            const buttonsContainer = document.createElement('div');
+            buttonsContainer.classList.add('buttonsContainer');
+
+            const likeBtn = document.createElement('button');
+            likeBtn.textContent = 'Like';
+            likeBtn.setAttribute('name', 'like');
+
+            const dislikeBtn = document.createElement('button');
+            dislikeBtn.textContent = 'Dislike';
+            dislikeBtn.setAttribute('name', 'dislike');
+
+            likeBtn.addEventListener('click', () => {
+                fetch('/api/like', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: videoId, value: true })
+                }).catch(error => console.error(`Error updating like on video ${videoId}: ${error}`));
+            });
+
+            dislikeBtn.addEventListener('click', () => {
+                fetch('/api/like', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: videoId, value: false })
+                }).catch(error => console.error(`Error updating dislike on video ${videoId}: ${error}`));
+            });
+
+            buttonsContainer.appendChild(likeBtn);
+            buttonsContainer.appendChild(dislikeBtn);
+
+            videoItem.appendChild(videoElement);
+            videoItem.appendChild(buttonsContainer);
+
+            document.getElementById('videoList').appendChild(videoItem);
+
+            const mediaUrl = `/media/${videoId}.mpd`;
+            const player = dashjs.MediaPlayer().create();
+            player.initialize(videoElement, mediaUrl, false);
+
+            watchHistory.push({ videoId: videoId, player: player, videoElement: videoElement });
+        }
+
+        // Load initial video
+        function loadInitialVideo() {
+            createVideoPlayer(currentVideoId);
+            currentPlayer = watchHistory[0].player;
+            setVideoVisibility(currentVideoId, true); // Make the first video visible
+            updateUrl(currentVideoId);  // Update the URL
+        }
+
+        // Toggle video visibility
+        function setVideoVisibility(videoId, isVisible) {
+            const videoElement = document.getElementById(`videoPlayer_${videoId}`);
+            const buttonsContainer = videoElement ? videoElement.querySelector('.buttonsContainer') : null;
+            if (videoElement) {
+                videoElement.style.opacity = isVisible ? 1 : 0;
+                videoElement.style.visibility = isVisible ? 'visible' : 'hidden';  // Make sure video is either visible or hidden
             }
-            
-            const mediaUrl = `/media/${id}.mpd`;
-
-            player = dashjs.MediaPlayer().create();
-            player.initialize(videoPlayer, mediaUrl, false);
-
-            player.updateSettings({
-                'streaming': {
-                    'abr': {
-                        'initialBitrate': { 'video': 500 },
-                        'autoSwitchBitrate': false
-                    }
-                }
-            });
-
-            player.on('error', (e) => {
-                console.error('Error occurred:', e);
-                document.getElementById('error').textContent = 'Failed to load video. Please try again later.';
-                document.getElementById('error').style.display = 'block';
-            });
-
-            playPauseBtn.textContent = 'Play';
-            currentVideoId = id;
-            setScrollToMiddle();
-
-            await fetch('/api/view', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: currentVideoId })
-            });
+            if (buttonsContainer) {
+                buttonsContainer.style.visibility = isVisible ? 'visible' : 'hidden'; // Show or hide the buttons as well
+            }
         }
 
-        function updateUrl(newId) {
-            const newUrl = `/play/${newId}`;
-            history.pushState(null, '', newUrl);
-        }
-
-        function setScrollToMiddle() {
-            const middleScroll = document.body.scrollHeight / 2 - window.innerHeight / 2;
-            window.scrollTo(0, middleScroll);
-        }
-
-        async function preloadVideos(videos) {
-            const preloadContainer = document.getElementById('preloadContainer');
-            preloadContainer.innerHTML = '';  // Clear previous preloads
-
-            videos.forEach(video => {
-                const videoElement = document.createElement('video');
-                videoElement.src = `/media/${video.id}.mpd`;
-                videoElement.preload = 'metadata';  // Preload only metadata to save bandwidth
-                preloadContainer.appendChild(videoElement);
-            });
-        }
-
-        async function fetchNewVideo() {
-            try {
-                if (videoHistoryIndex >= videoHistory.length - 5) {
-                    const response = await fetch('/api/videos', {
+        // Play/Pause functionality for all videos
+        playPauseBtn.onclick = () => {
+            if (currentPlayer) {
+                if (currentPlayer.isPaused()) {
+                    currentPlayer.play();  // Play the current video
+                    fetch('/api/view', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ count: 10 })
-                    });
-                    const data = await response.json();
-                    if (data.status) {
-                        videoHistory.push(...data.videos);
-                        preloadVideos(data.videos);  // Preload the fetched videos
-                    }
+                        body: JSON.stringify({ id: watchHistory[historyIndex].videoId })
+                    }).catch(error => console.error(`Error updating dislike on video ${videoId}: ${error}`));
+                    playPauseBtn.textContent = 'Pause';  // Update button text
+                } else {
+                    currentPlayer.pause();  // Pause the current video
+                    playPauseBtn.textContent = 'Play';  // Update button text
                 }
-
-                const nextVideo = videoHistory[videoHistoryIndex + 1];
-                if (nextVideo) {
-                    const newId = nextVideo.id;
-                    loadVideo(newId);
-                    updateUrl(newId);
-                    videoHistoryIndex++;
-                }
-            } catch (error) {
-                console.log('Error fetching new video:', error);
-            }
-        }
-
-        async function loadPreviousVideo() {
-            if (videoHistoryIndex > 0) {
-                const previousVideo = videoHistory[videoHistoryIndex - 1];
-                if (previousVideo) {
-                    const previousVideoId = previousVideo.id;
-                    loadVideo(previousVideoId);
-                    updateUrl(previousVideoId);
-                    videoHistoryIndex--;
-                }
-            }
-        }
-
-        document.getElementById('like').addEventListener('click', async (e) => {
-            e.preventDefault();
-            await fetch('/api/like', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: currentVideoId, value: true })
-            });
-        });
-
-        document.getElementById('dislike').addEventListener('click', async (e) => {
-            e.preventDefault();
-            await fetch('/api/like', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: currentVideoId, value: false })
-            });
-        });
-
-        const togglePlayPause = () => {
-            if (videoPlayer.paused) {
-                videoPlayer.play();
-                playPauseBtn.textContent = 'Pause';
-            } else {
-                videoPlayer.pause();
-                playPauseBtn.textContent = 'Play';
             }
         };
 
-        playPauseBtn.addEventListener('click', togglePlayPause);
-        videoPlayer.addEventListener('click', togglePlayPause);
-
-        videoPlayer.addEventListener('timeupdate', () => {
-            const progress = (videoPlayer.currentTime / videoPlayer.duration) * 100;
-            progressBar.style.width = `${progress}%`;
-        });
-
-        progressContainer.addEventListener('click', (event) => {
-            const clickPosition = (event.offsetX / progressContainer.offsetWidth) * videoPlayer.duration;
-            videoPlayer.currentTime = clickPosition;
-        });
-
-        window.addEventListener('load', () => {
-            loadVideo(currentVideoId);
-            setScrollToMiddle();
-        });
-
-        window.addEventListener('wheel', debounce((event) => {
-            const SCROLL_THRESHOLD = 1;
-            if (event.deltaY > -SCROLL_THRESHOLD) {
-                fetchNewVideo();
-            } else if (event.deltaY < SCROLL_THRESHOLD) {
-                loadPreviousVideo();
+        // Scroll handling to toggle visibility and load next video
+        window.addEventListener('wheel', (event) => {
+            // Scroll down (next video)
+            if (event.deltaY > 0 && historyIndex < watchHistory.length - 1) {
+                setVideoVisibility(watchHistory[historyIndex].videoId, false);  // Hide current video
+                historyIndex++;
+                setVideoVisibility(watchHistory[historyIndex].videoId, true);   // Show next video
+                currentPlayer = watchHistory[historyIndex].player;  // Update current player
+                updateUrl(watchHistory[historyIndex].videoId);  // Update the URL
             }
-        }, 200));
-        
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (!entry.isIntersecting) {
-                    fetchNewVideo();
-                }
-            });
-        }, { threshold: 0.1 });
+            // Scroll up (previous video)
+            else if (event.deltaY < 0 && historyIndex > 0) {
+                setVideoVisibility(watchHistory[historyIndex].videoId, false);  // Hide current video
+                historyIndex--;
+                setVideoVisibility(watchHistory[historyIndex].videoId, true);   // Show previous video
+                currentPlayer = watchHistory[historyIndex].player;  // Update current player
+                updateUrl(watchHistory[historyIndex].videoId);  // Update the URL
+            }
 
-        function debounce(fn, delay) {
-            let timeoutId;
-            return function (...args) {
-                if (timeoutId) clearTimeout(timeoutId);
-                timeoutId = setTimeout(() => fn(...args), delay);
-            };
+            // Check if we are near the last 3 videos and preload more
+            if (historyIndex >= watchHistory.length - 3) {
+                preloadVideos(10);
+            }
+        });
+
+        // Preload possible video recommendations
+        async function preloadVideos(count) {
+            try {
+                const response = await fetch('/api/videos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ count: count })
+                });
+
+                const data = await response.json();
+
+                if (data && Array.isArray(data.videos)) {
+                    data.videos.forEach(vid => createVideoPlayer(vid.id));
+                } else {
+                    console.error('Invalid response format: "videos" not found in data', data);
+                }
+            } catch (error) {
+                console.error('Error preloading videos:', error);
+            }
         }
 
-        observer.observe(document.querySelector('#videoContainer'));
+        // Update URL based on current video
+        function updateUrl(videoId) {
+            const newUrl = `/play/${videoId}`;
+            if (window.location.pathname !== newUrl) {
+                window.history.pushState({}, '', newUrl); // Update the browser's URL
+            }
+        }
 
+        // Load initial video on page load
+        loadInitialVideo();
+
+        // Preload the first 10 videos
+        preloadVideos(10);
     </script>
 </body>
 </html>
