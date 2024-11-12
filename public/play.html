@@ -86,6 +86,24 @@
             const mediaUrl = `http://130.245.136.220/media/${id}.mpd`;
             player = dashjs.MediaPlayer().create();
             player.setProtectionData({});
+
+            // Set player configurations for fast start
+            player.updateSettings({
+                'streaming': {
+                    'bufferToUseAtStart': 5, // Number of seconds of buffer to keep at the start
+                    'initialBitrate': 1000, // Set initial bitrate for faster loading (adjust as needed)
+                    'abr': {
+                        'initialBitrate': { 'video': 500 },  // Set initial video bitrate for faster load
+                        'autoSwitchBitrate': false           // Disable auto bitrate switching for quicker start
+                    },
+                    'buffer': {
+                        'bufferLowLatency': true, // Enable low latency buffer
+                        'bufferBehind': 2,       // Allow minimal buffer behind the current playback position
+                        'bufferAhead': 5         // Ensure enough buffer ahead of playback
+                    }
+                }
+            });
+
             player.initialize(videoPlayer, mediaUrl, true); // Autoplay new video
 
             player.on('error', (e) => {
@@ -200,7 +218,6 @@
         }, { threshold: 0.1 });
 
         observer.observe(document.querySelector('#videoContainer'));
-
     </script>
 </body>
 </html>
