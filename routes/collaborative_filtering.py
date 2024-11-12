@@ -2,7 +2,8 @@ import redis
 import json
 import numpy as np
 import random
-from implicit.als import AlternatingLeastSquares
+from lightfm import LightFM
+from lightfm import datasets
 from scipy.sparse import csr_matrix
 from pymongo import MongoClient
 from bson import ObjectId
@@ -33,14 +34,14 @@ def load_user_video_data():
 
         for user in users:
             user_index = user['index']
-            # Set liked videos to 1
+            # Set liked videos to 1 (Implicit feedback)
             for video_id in user.get('liked', []):
                 video = videos_collection.find_one({'_id': video_id})
                 if video:
                     video_index = video['index']
                     user_video_matrix[user_index, video_index] = 1
 
-            # Set disliked videos to -1
+            # Set disliked videos to -1 (Implicit feedback)
             for video_id in user.get('disliked', []):
                 video = videos_collection.find_one({'_id': video_id})
                 if video:
@@ -66,8 +67,8 @@ def recommend_videos(user_id_str, count):
         
         print("Shape of user_video_matrix:", user_video_matrix.shape)
 
-        model = AlternatingLeastSquares(factors=10, regularization=0.1)
-        model.fit(user_video_matrix.T)  # Training model on the transposed matrix
+        model = LightFM(no_components=10, loss='warp')  # WARP loss for implicit feedback
+        model.fit(user_video_matrix, epochs=30, num_threads=4)  # Training the model
 
         # Convert user_id from string to ObjectId
         user_id = ObjectId(user_id_str)
@@ -87,57 +88,52 @@ def recommend_videos(user_id_str, count):
             print(user_video_matrix.shape[0])
             print("col")
             print(user_video_matrix.shape[1])
-            recommendations = model.recommend(user_index, user_video_matrix[user_index], N=N)
-            print(recommendations)
-        except IndexError as ie:
-            print("IndexError during recommendation generation:", str(ie))
+            # Get the top N recommendations for the user
+            scores = model.predict(user_index, np.arange(user_video_matrix.shape[1]))
+            top_indices = np.argsort(-scores)[:N]
+
+            # Fetch all videos from MongoDB and map indices to video IDs
+            videos = list(videos_collection.find())
+            video_ids = [None] * (max(video['index'] for video in videos) + 1)
+            for video in videos:
+                video_ids[video['index']] = video['_id']
+
+            # Extract video IDs from recommendations, excluding already watched videos
+            recommended_video_ids = [
+                video_ids[idx] for idx in top_indices
+                if video_ids[idx] not in watched_videos
+            ]
+            
+            # Add additional unwatched/random videos if needed to reach the requested count
+            if len(recommended_video_ids) < count:
+                unwatched_videos = [vid for vid in video_ids if vid not in watched_videos]
+                random_videos = random.sample(unwatched_videos, min(count - len(recommended_video_ids), len(unwatched_videos)))
+                recommended_video_ids.extend(random_videos)
+
+                # If still not enough, add random watched videos to fill
+                if len(recommended_video_ids) < count:
+                    additional_videos = random.sample(watched_videos, count - len(recommended_video_ids))
+                    recommended_video_ids.extend(additional_videos)
+
+            # Retrieve video details from the database
+            video_details = [
+                {
+                    "id": str(video["_id"]),
+                    "description": video["description"],
+                    "title": video["title"],
+                    "watched": video["_id"] in watched_videos,
+                    "liked": video["_id"] in user_data.get("liked", []),
+                    "likevalues": video["like"]
+                }
+                for video in videos_collection.find({"_id": {"$in": recommended_video_ids}})
+            ]
+
+            return video_details
+
+        except Exception as e:
+            print("Error generating recommendations:", str(e))
             traceback.print_exc()
             return []
-        
-        # Fetch all videos from MongoDB and map indices to video IDs
-        videos = list(videos_collection.find())
-        video_ids = [None] * (max(video['index'] for video in videos) + 1)
-        for video in videos:
-            video_ids[video['index']] = video['_id']
-
-        # Extract video IDs from recommendations, excluding already watched videos
-        # recommended_video_ids = [
-        #     video_ids[int(rec[0])] for rec in recommendations
-        #     if video_ids[int(rec[0])] not in watched_videos
-        # ]
-        recommended_video_ids = [
-        video_ids[rec[0]] for rec in recommendations
-        if isinstance(rec[0], (int, np.integer))  # Ensure rec[0] is an integer
-        and rec[0] < len(video_ids)  # Ensure the index is within bounds
-        and video_ids[rec[0]] is not None  # Ensure the video ID is not None
-        and video_ids[rec[0]] not in watched_videos  # Ensure the video isn't watched
-]
-
-        # Add additional unwatched/random videos if needed to reach the requested count
-        if len(recommended_video_ids) < count:
-            unwatched_videos = [vid for vid in video_ids if vid not in watched_videos]
-            random_videos = random.sample(unwatched_videos, min(count - len(recommended_video_ids), len(unwatched_videos)))
-            recommended_video_ids.extend(random_videos)
-
-            # If still not enough, add random watched videos to fill
-            if len(recommended_video_ids) < count:
-                additional_videos = random.sample(watched_videos, count - len(recommended_video_ids))
-                recommended_video_ids.extend(additional_videos)
-
-        # Retrieve video details from the database
-        video_details = [
-            {
-                "id": str(video["_id"]),
-                "description": video["description"],
-                "title": video["title"],
-                "watched": video["_id"] in watched_videos,
-                "liked": video["_id"] in user_data.get("liked", []),
-                "likevalues": video["like"]
-            }
-            for video in videos_collection.find({"_id": {"$in": recommended_video_ids}})
-        ]
-
-        return video_details
 
     except Exception as e:
         print("Error in recommend_videos:", str(e))
