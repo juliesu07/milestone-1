@@ -83,7 +83,12 @@ def recommend_videos(user_id_str, count):
         print("Generating recommendations for user index:", user_index)
 
         try:
+            print("row")
+            print(user_video_matrix.shape[0])
+            print("col")
+            print(user_video_matrix.shape[1])
             recommendations = model.recommend(user_index, user_video_matrix[user_index], N=N)
+            print(recommendations)
         except IndexError as ie:
             print("IndexError during recommendation generation:", str(ie))
             traceback.print_exc()
@@ -96,10 +101,17 @@ def recommend_videos(user_id_str, count):
             video_ids[video['index']] = video['_id']
 
         # Extract video IDs from recommendations, excluding already watched videos
+        # recommended_video_ids = [
+        #     video_ids[int(rec[0])] for rec in recommendations
+        #     if video_ids[int(rec[0])] not in watched_videos
+        # ]
         recommended_video_ids = [
-            video_ids[int(rec[0])] for rec in recommendations
-            if video_ids[int(rec[0])] not in watched_videos
-        ]
+        video_ids[rec[0]] for rec in recommendations
+        if isinstance(rec[0], (int, np.integer))  # Ensure rec[0] is an integer
+        and rec[0] < len(video_ids)  # Ensure the index is within bounds
+        and video_ids[rec[0]] is not None  # Ensure the video ID is not None
+        and video_ids[rec[0]] not in watched_videos  # Ensure the video isn't watched
+]
 
         # Add additional unwatched/random videos if needed to reach the requested count
         if len(recommended_video_ids) < count:
