@@ -9,38 +9,42 @@
         body, html {
             margin: 0;
             padding: 0;
-            overflow-x: hidden;
             font-family: Arial, sans-serif;
-            height: 100vh; /* Set a taller height to allow scrolling */
+            height: 100%;
+            overflow-x: hidden;
+            background-color: #f4f4f4;
         }
         #videoContainer {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 90vh;
+            max-width: 800px;
+            margin: 50px auto;
             background-color: #000;
             padding: 20px;
             border-radius: 10px;
-            max-width: 90%;
-            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5);
-            margin: auto; /* Center horizontally */
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.3);
         }
         #videoPlayer {
             width: 100%;
-            max-width: 600px;
             height: auto;
-            background-color: #000;
+            border-radius: 10px;
         }
         #controls {
-            margin-top: 10px;
-            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             width: 100%;
+            margin-top: 15px;
+            color: white;
         }
         #playPauseBtn {
-            display: inline-block;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            padding: 10px 20px;
+            padding: 10px;
             background-color: #007bff;
             color: white;
             border-radius: 5px;
@@ -49,9 +53,36 @@
         #playPauseBtn:hover {
             background-color: #0056b3;
         }
+        #progressContainer {
+            width: 100%;
+            background-color: #333;
+            border-radius: 5px;
+            margin: 0 10px;
+            height: 8px;
+            cursor: pointer;
+        }
+        #progressBar {
+            width: 0%;
+            height: 100%;
+            background-color: #007bff;
+            border-radius: 5px;
+        }
+        #likeBtn, #dislikeBtn {
+            padding: 10px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        #likeBtn:hover, #dislikeBtn:hover {
+            background-color: #218838;
+        }
         #error {
             color: red;
             text-align: center;
+            display: none;
         }
     </style>
 </head>
@@ -59,52 +90,56 @@
     <div id="videoContainer">
         <video id="videoPlayer" muted></video>
         <div id="controls">
-            <div id="playPauseBtn">Pause</div>
-            <button id="likeBtn">Like</button>
-            <button id="dislikeBtn">Dislike</button>
+            <div id="playPauseBtn">Play</div>
+            <div id="progressContainer">
+                <div id="progressBar"></div>
+            </div>
+            <div>
+                <button id="likeBtn">Like</button>
+                <button id="dislikeBtn">Dislike</button>
+            </div>
         </div>
-        <div id="error" style="display: none;"></div>
+        <div id="error"></div>
     </div>
     <script>
         let player = null;
-        let videoLoadCount = 0;  // Counter to track number of videos loaded
-        let currentVideoId = window.location.pathname.split('/').pop() || 'defaultId';  // Initialize currentVideoId with a fallback
-        let videoHistory = [];  // Stack to keep track of previously viewed videos
-        let videoHistoryIndex = 0;  // Initialize index to -1, so the first video will be at index 0
+        let videoLoadCount = 0;
+        let currentVideoId = window.location.pathname.split('/').pop() || 'defaultId';
+        let videoHistory = [];
+        let videoHistoryIndex = 0;
         videoHistory.push(currentVideoId);
+
         async function loadVideo(id) {
             videoLoadCount++;
 
-            // Reset player if videoLoadCount reaches 5
             if (videoLoadCount >= 5) {
                 if (player) {
-                    player.reset(); // Properly clean up previous player instance
+                    player.reset();
                 }
-                videoLoadCount = 0;  // Reset the counter after resetting the player
+                videoLoadCount = 0;
             }
 
             const mediaUrl = `http://130.245.136.220/media/${id}.mpd`;
             player = dashjs.MediaPlayer().create();
             player.setProtectionData({});
 
-            // Set player configurations for fast start
             player.updateSettings({
                 'streaming': {
-                    'bufferToUseAtStart': 5, // Number of seconds of buffer to keep at the start
-                    'initialBitrate': 1000, // Set initial bitrate for faster loading (adjust as needed)
+                    'bufferToUseAtStart': 5,
+                    'initialBitrate': 1000,
                     'abr': {
-                        'initialBitrate': { 'video': 500 },  // Set initial video bitrate for faster load
-                        'autoSwitchBitrate': false           // Disable auto bitrate switching for quicker start
+                        'initialBitrate': { 'video': 500 },
+                        'autoSwitchBitrate': false
                     },
                     'buffer': {
-                        'bufferLowLatency': true, // Enable low latency buffer
-                        'bufferBehind': 2,       // Allow minimal buffer behind the current playback position
-                        'bufferAhead': 5         // Ensure enough buffer ahead of playback
+                        'bufferLowLatency': true,
+                        'bufferBehind': 2,
+                        'bufferAhead': 5
                     }
                 }
             });
 
-            player.initialize(videoPlayer, mediaUrl, false); // Autoplay new video
+            player.initialize(videoPlayer, mediaUrl, false);
 
             player.on('error', (e) => {
                 console.error('Error occurred: ', e);
@@ -113,13 +148,13 @@
             });
 
             playPauseBtn.textContent = 'Play';
-            currentVideoId = id;  // Update current video ID
-            setScrollToMiddle();   // Set scroll position to middle when loading a new video
+            currentVideoId = id;
+            setScrollToMiddle();
         }
 
         function updateUrl(newId) {
             const newUrl = `/play/${newId}`;
-            history.pushState(null, '', newUrl);  // Update the browser URL
+            history.pushState(null, '', newUrl);
         }
 
         function setScrollToMiddle() {
@@ -130,33 +165,34 @@
         async function fetchNewVideo() {
             try {
                 if (videoHistoryIndex >= videoHistory.length - 5) {
-                    const response = await fetch(`/api/randvideo/${currentVideoId}`);
-                    const data = await response.json();
-                    
-                    if (data.status === 'OK') {
-                        videoHistory.push(...data.videoIds);  // Append new videos
+                    const response = await fetch('/api/videos', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ count: 10 })
+                    });
+                        
+                    if (response.status === 'OK') {
+                        videoHistory.push(...response.videos);
                     } else {
                         throw new Error('Failed to fetch new video');
                     }
                 }
 
                 const newId = videoHistory[videoHistoryIndex + 1];
-                loadVideo(newId);  // Load the new video
-                updateUrl(newId);   // Update the URL
-                videoHistoryIndex++;  // Increment the history index
+                loadVideo(newId);
+                updateUrl(newId);
+                videoHistoryIndex++;
             } catch (error) {
                 console.error('Error fetching new video:', error);
-                errorDiv.textContent = 'Error loading new video.';
-                errorDiv.style.display = 'block';
             }
         }
 
         async function loadPreviousVideo() {
             if (videoHistoryIndex > 0) {
                 const previousVideoId = videoHistory[videoHistoryIndex - 1];
-                loadVideo(previousVideoId);  // Load the previous video
-                updateUrl(previousVideoId);  // Update the URL
-                videoHistoryIndex--;  // Decrement the history index
+                loadVideo(previousVideoId);
+                updateUrl(previousVideoId);
+                videoHistoryIndex--;
             } else {
                 console.log("No previous video in history.");
             }
@@ -164,24 +200,18 @@
 
         document.getElementById('likeBtn').addEventListener('click', async (e) => {
             e.preventDefault();
-
             const response = await fetch('/api/like', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: currentVideoId, value: true })
             });
         });
 
         document.getElementById('dislikeBtn').addEventListener('click', async (e) => {
             e.preventDefault();
-
             const response = await fetch('/api/like', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: currentVideoId, value: false })
             });
         });
@@ -197,32 +227,40 @@
         };
 
         playPauseBtn.addEventListener('click', togglePlayPause);
-
         videoPlayer.addEventListener('click', togglePlayPause);
+
+        videoPlayer.addEventListener('timeupdate', () => {
+            const progress = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+            progressBar.style.width = `${progress}%`;
+        });
+
+        progressContainer.addEventListener('click', (event) => {
+            const clickPosition = (event.offsetX / progressContainer.offsetWidth) * videoPlayer.duration;
+            videoPlayer.currentTime = clickPosition;
+        });
 
         window.addEventListener('load', () => {
             loadVideo(currentVideoId);
-            setScrollToMiddle();  // Center scroll when page initially loads
+            setScrollToMiddle();
         });
 
         window.addEventListener('wheel', (event) => {
-            if (event.deltaY > 0) {  // Scroll down
+            if (event.deltaY > 0) {
                 fetchNewVideo();
-            } else if (event.deltaY < 0) {  // Scroll up
+            } else if (event.deltaY < 0) {
                 loadPreviousVideo();
             }
         });
 
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                if (!entry.isIntersecting) {  // If the video is out of view
+                if (!entry.isIntersecting) {
                     fetchNewVideo();
                 }
             });
         }, { threshold: 0.1 });
 
         observer.observe(document.querySelector('#videoContainer'));
-
     </script>
 </body>
 </html>

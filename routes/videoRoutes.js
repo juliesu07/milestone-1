@@ -18,7 +18,7 @@ client.on('error', (err) => console.error('Redis Client Error', err));
   await client.connect();
 })();
 
-router.post('/videos1', async (req, res) => {
+router.post('/videos', async (req, res) => {
   const { count} = req.body;
   const userId = req.session.userId;
   // PLEASE READ add ml library, im just editing the format of the json 
@@ -39,7 +39,8 @@ router.post('/videos1', async (req, res) => {
     if (response) {
       // Parse the response and send it back to the client
       const recommendedVideos = JSON.parse(response.element).videos;
-      return res.json({ videos: recommendedVideos });
+      console.log(res)
+      return res.json({ status: 'OK', videos: recommendedVideos });
     } else {
       // If no response is received within the timeout, send an error
       return res.status(200).json({ status: 'ERROR', error: true, message: err.message });
@@ -54,34 +55,29 @@ router.post('/videos1', async (req, res) => {
 
 
 
-
-
-
-
 // Get count number of video entires
-router.post('/videos', async (req, res) => {
-  const { count} = req.body;
-  const userId = req.session.userId;
+// router.post('/videos', async (req, res) => {
+//   const { count} = req.body;
+//   const userId = req.session.userId;
 
-  try {
-    const videoEntries = await Video.find({}).limit(count);
-    const user = await User.findById(userId);
-    const videos = videoEntries.map(({_id, description, title, like}) => ({
-      id: _id,
-      description: description,
-      title: title,
-      watched: user.watched.includes(_id),
-      liked: user.liked.includes(_id),
-      likevalues: like,
-    }));
-
-    return res.json({ status: 'OK', videos, });
-  }
-  catch (err) {
-    console.log(err);
-    res.status(500).json({ status: 'Error', message: "Blame Anna for not being able to retrieve videos" });
-  }
-});
+//   try {
+//     const videoEntries = await Video.find({}).limit(count);
+//     const user = await User.findById(userId);
+//     const videos = videoEntries.map(({_id, description, title, like}) => ({
+//       id: _id,
+//       description: description,
+//       title: title,
+//       watched: user.watched.includes(_id),
+//       liked: user.liked.includes(_id),
+//       likevalues: like,
+//     }));
+//     return res.json({ status: 'OK', videos, });
+//   }
+//   catch (err) {
+//     console.log(err);
+//     res.status(500).json({ status: 'Error', message: "Blame Anna for not being able to retrieve videos" });
+//   }
+// });
 
 // Send Random Video that does not match eid
 router.get('/randvideo/:eid', async (req, res) => {

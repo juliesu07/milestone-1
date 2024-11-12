@@ -46,7 +46,6 @@
         });
         // console.log(response);
         const data = await response.json();
-	
         if (data.status === 'OK') {
           const videoList = document.getElementById('videoList');
           videoList.innerHTML = ''; // Clear any previous entries
