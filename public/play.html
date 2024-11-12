@@ -186,7 +186,7 @@
             });
         });
 
-        playPauseBtn.addEventListener('click', () => {
+        const togglePlayPause = () => {
             if (videoPlayer.paused) {
                 videoPlayer.play();
                 playPauseBtn.textContent = 'Pause';
@@ -194,7 +194,11 @@
                 videoPlayer.pause();
                 playPauseBtn.textContent = 'Play';
             }
-        });
+        };
+
+        playPauseBtn.addEventListener('click', togglePlayPause);
+
+        videoPlayer.addEventListener('click', togglePlayPause);
 
         window.addEventListener('load', () => {
             loadVideo(currentVideoId);
@@ -218,6 +222,7 @@
         }, { threshold: 0.1 });
 
         observer.observe(document.querySelector('#videoContainer'));
+
     </script>
 </body>
 </html>
