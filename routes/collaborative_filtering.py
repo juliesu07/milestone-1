@@ -61,6 +61,8 @@ def recommend_videos(user_id_str, count):
     videos_collection = db['videos']
     
     user_video_matrix = load_user_video_data()
+    print("Shape of user_video_matrix:", user_video_matrix.shape)
+
     model = AlternatingLeastSquares(factors=10, regularization=0.1)
     model.fit(user_video_matrix.T)  # Training model on the transposed matrix
 
@@ -73,7 +75,12 @@ def recommend_videos(user_id_str, count):
     
 
     # Generate initial recommendations based on collaborative filtering
-    recommendations = model.recommend(user_index, user_video_matrix[user_index], N=count)
+    N = min(count, user_video_matrix.shape[1])
+    print("matrix:")
+    print(user_video_matrix)
+    print("matrix index:")
+    print(user_index)
+    recommendations = model.recommend(user_index, user_video_matrix[user_index], N=N)
 
     # Fetch all videos from MongoDB and create the mapping of index to video ID
     videos = list(videos_collection.find())

@@ -39,7 +39,7 @@ router.post('/videos', async (req, res) => {
     if (response) {
       // Parse the response and send it back to the client
       const recommendedVideos = JSON.parse(response.element).videos;
-      console.log(recommendedVideos)
+      // console.log(recommendedVideos)
       return res.json({ status: 'OK', videos: recommendedVideos });
     } else {
       // If no response is received within the timeout, send an error
@@ -47,7 +47,7 @@ router.post('/videos', async (req, res) => {
     }
   } catch (err) {
     // Handle any unexpected errors
-    console.error('Error processing recommendations:', err);
+    // console.error('Error processing recommendations:', err);
     return res.status(200).json({ status: 'ERROR', error: true, message: err.message });
   }
 });
