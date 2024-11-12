@@ -163,17 +163,25 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ count: 10 })
                     });
-                    
-                    const videos = await response.json();
-                    console.log(videos);
-                    // Push only video ids into videoHistory
-                    videos.forEach(video => videoHistory.push(video.id));
+                        
+                    const data = await response.json();
+                    console.log(data);
+                    if (response.ok) {
+                        // Push the videos into the history
+                        videoHistory.push(...data);
+                    } else {
+                        throw new Error('Failed to fetch new video');
+                    }
                 }
 
-                const newId = videoHistory[videoHistoryIndex + 1];
-                loadVideo(newId);
-                updateUrl(newId);
-                videoHistoryIndex++;
+                // Get the next video ID from videoHistory
+                const nextVideo = videoHistory[videoHistoryIndex + 1];
+                if (nextVideo) {
+                    const newId = nextVideo.id;
+                    loadVideo(newId);
+                    updateUrl(newId);
+                    videoHistoryIndex++;
+                }
             } catch (error) {
                 console.error('Error fetching new video:', error);
             }
@@ -181,10 +189,13 @@
 
         async function loadPreviousVideo() {
             if (videoHistoryIndex > 0) {
-                const previousVideoId = videoHistory[videoHistoryIndex - 1];
-                loadVideo(previousVideoId);
-                updateUrl(previousVideoId);
-                videoHistoryIndex--;
+                const previousVideo = videoHistory[videoHistoryIndex - 1];
+                if (previousVideo) {
+                    const previousVideoId = previousVideo.id;
+                    loadVideo(previousVideoId);
+                    updateUrl(previousVideoId);
+                    videoHistoryIndex--;
+                }
             } else {
                 console.log("No previous video in history.");
             }
