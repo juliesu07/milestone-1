@@ -48,7 +48,14 @@ def load_user_video_data():
                     video_index = video['index']
                     user_video_matrix[user_index, video_index] = -1
 
-        print("Shape of user_video_matrix:", user_video_matrix.shape)
+            # for video_id in user.get('watched', []):
+            #     video = videos_collection.find_one({'_id': video_id})
+            #     if video:
+            #         video_index = video['index']
+            #         user_video_matrix[user_index, video_index] = 0
+
+
+        # print("Shape of user_video_matrix:", user_video_matrix.shape)
         return csr_matrix(user_video_matrix)
 
     except Exception as e:
@@ -70,7 +77,7 @@ def recommend_videos(user_id_str, count):
         
         print("Shape of user_video_matrix:", user_video_matrix.shape)
         #LightFM(no_components=5, loss='warp'
-        model = LightFM(no_components=5, loss='warp')  # WARP loss for implicit feedback
+        model = LightFM(loss='warp')  # WARP loss for implicit feedback
         model.fit(user_video_matrix, epochs=30, num_threads=2)  # Training the model
 
         # Convert user_id from string to ObjectId
@@ -80,7 +87,8 @@ def recommend_videos(user_id_str, count):
             raise ValueError(f"User with ID {user_id_str} not found in database.")
         
         user_index = user_data.get("index")
-        watched_videos = user_data.get("watched", [])
+        watched_videos = [vid for vid in user_data.get("watched", [])]
+        # print("watched video ids", watched_videos)
         
         # Generate initial recommendations based on collaborative filtering
         # N = min(count, user_video_matrix.shape[1])
@@ -101,11 +109,10 @@ def recommend_videos(user_id_str, count):
             recommended_video_ids = [
                 video_ids[idx] for idx in top_indices
                 if video_ids[idx] not in watched_videos
-            ]
-            
+            ]            
             # Add additional unwatched/random videos if needed to reach the requested count
             if len(recommended_video_ids) < count:
-                unwatched_videos = [vid for vid in video_ids if vid not in watched_videos]
+                unwatched_videos = [ObjectId(vid) for vid in video_ids if vid not in watched_videos]
                 random_videos = random.sample(unwatched_videos, min(count - len(recommended_video_ids), len(unwatched_videos)))
                 recommended_video_ids.extend(random_videos)
 
@@ -114,18 +121,24 @@ def recommend_videos(user_id_str, count):
                     additional_videos = random.sample(watched_videos, count - len(recommended_video_ids))
                     recommended_video_ids.extend(additional_videos)
 
+            # for video in videos_collection.find({"_id": {"$in": recommended_video_ids}}):
+            #     # print("videos: ", video)
+            #     if video["_id"] in watched_videos:
+            #         print("YES", video)
+
             # Retrieve video details from the database
             video_details = [
                 {
                     "id": str(video["_id"]),
                     "description": video["description"],
                     "title": video["title"],
-                    "watched": str(video["_id"]) in watched_videos,
-                    "liked": str(video["_id"]) in user_data.get("liked", []),
+                    "watched": video["_id"] in watched_videos,
+                    "liked": video["_id"] in user_data.get("liked", []),
                     "likevalues": video["like"]
                 }
                 for video in videos_collection.find({"_id": {"$in": recommended_video_ids}})
             ]
+            # print(video_details)
 
             return video_details
 

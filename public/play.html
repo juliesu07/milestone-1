@@ -132,6 +132,8 @@
         let historyIndex = 0;
         let watchHistory = [];
         let currentPlayer = null;
+        
+        
 
         // Function to create video DOM elements
         function createVideoPlayer(videoId) {
@@ -177,7 +179,7 @@
             videoItem.appendChild(buttonsContainer);
 
             document.getElementById('videoList').appendChild(videoItem);
-
+            //console.log(videoId);
             const mediaUrl = `/media/${videoId}.mpd`;
             const player = dashjs.MediaPlayer().create();
             player.initialize(videoElement, mediaUrl, false);
@@ -211,11 +213,11 @@
             if (currentPlayer) {
                 if (currentPlayer.isPaused()) {
                     currentPlayer.play();  // Play the current video
-                    fetch('/api/view', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: watchHistory[historyIndex].videoId })
-                    }).catch(error => console.error(`Error updating dislike on video ${videoId}: ${error}`));
+                    //fetch('/api/view', {
+                    //    method: 'POST',
+                    //    headers: { 'Content-Type': 'application/json' },
+                    //    body: JSON.stringify({ id: watchHistory[historyIndex].videoId })
+                    //}).catch(error => console.error(`Error updating dislike on video ${videoId}: ${error}`));
                     playPauseBtn.textContent = 'Pause';  // Update button text
                 } else {
                     currentPlayer.pause();  // Pause the current video
@@ -259,7 +261,7 @@
                 });
 
                 const data = await response.json();
-
+                console.log(data);
                 if (data && Array.isArray(data.videos)) {
                     data.videos.forEach(vid => createVideoPlayer(vid.id));
                 } else {
@@ -276,6 +278,11 @@
             if (window.location.pathname !== newUrl) {
                 window.history.pushState({}, '', newUrl); // Update the browser's URL
             }
+            fetch('/api/view', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: videoId })
+            }).catch(error => console.error(`Error updating dislike on video ${videoId}: ${error}`));
         }
 
         // Load initial video on page load

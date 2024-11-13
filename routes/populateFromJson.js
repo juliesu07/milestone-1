@@ -20,15 +20,20 @@ mongoose.connect('mongodb://localhost:27017/milestone-1', {
 async function importVideosFromJSON() {
     try {
         // Path to the JSON file
-        const inputFilePath = path.join(__dirname, '../videos/all_videos.json');
+        const inputFilePath = path.join(__dirname, 'all_videos.json');
 
         // Read and parse JSON file
         const videosData = JSON.parse(fs.readFileSync(inputFilePath, 'utf-8'));
 
-        // Insert documents into MongoDB
-        await Video.insertMany(videosData);
+        console.log(videosData);
 
-        console.log(`Imported ${videosData.length} videos to MongoDB`);
+        // Clear existing collection to avoid duplicate _id errors (optional)
+        await Video.deleteMany({});
+
+        // Insert documents into MongoDB with matching _id values
+        await Video.insertMany(videosData, { ordered: true });
+
+        console.log(`Imported ${videosData.length} videos to MongoDB with matching IDs`);
     } catch (error) {
         console.error("Error importing videos from JSON:", error);
     } finally {

@@ -71,7 +71,7 @@ router.post('/upload', upload, async (req, res) => {
                 return;
             }
             // Start background processing after renaming
-            backgroundProcessVideo(newFilePath, video._id);
+            backgroundProcessVideo(newFilePath, video._id, res);
         });
 
         // Update user document with the video ID
@@ -85,7 +85,7 @@ router.post('/upload', upload, async (req, res) => {
 
 
 // Background function to handle video processing and status update
-async function backgroundProcessVideo(filePath, videoId) {
+async function backgroundProcessVideo(filePath, videoId, res) {
   try {
       // Process video and generate thumbnail in parallel
       await Promise.all([
@@ -153,24 +153,31 @@ async function processVideo(inputPath, videoId) {
   });
 }
 
-// Function to generate a thumbnail using FFmpeg
 async function generateThumbnail(inputPath, videoId) {
     return new Promise((resolve, reject) => {
         const thumbnailDir = path.resolve(__dirname, '..', 'thumbnails');
         const thumbnailPath = path.join(thumbnailDir, `${videoId}.jpg`);
 
-        ffmpeg(inputPath).on('end', () => {
-            console.log('Thumbnail generation complete');
-            resolve();
-        }).on('error', (err) => {
-            console.error('Error generating thumbnail:', err);
-            reject(err);
-        }).screenshots({
-            timestamps: ['00:00:00.000'],
-            filename: `${videoId}.jpg`,
-            folder: thumbnailDir,
-            size: '320x180',
-        });
+        const THUMBNAIL_WIDTH = 320;
+        const THUMBNAIL_HEIGHT = 180;
+
+        ffmpeg(inputPath)
+            .on('end', () => {
+                console.log(`Thumbnail generated at ${thumbnailPath}`);
+                resolve(thumbnailPath);
+            })
+            .on('error', (err) => {
+                console.error('Error generating thumbnail:', err);
+                reject(err);
+            })
+            .output(thumbnailPath)
+            .outputOptions([
+                `-vf`,
+                `scale='if(gt(iw/ih,${THUMBNAIL_WIDTH}/${THUMBNAIL_HEIGHT}),${THUMBNAIL_WIDTH},-1)':'if(gt(iw/ih,${THUMBNAIL_WIDTH}/${THUMBNAIL_HEIGHT}),-1,${THUMBNAIL_HEIGHT})',` +
+                `pad=${THUMBNAIL_WIDTH}:${THUMBNAIL_HEIGHT}:(ow-iw)/2:(oh-ih)/2`
+            ])
+            .frames(1)
+            .run();
     });
 }
 
