@@ -9,7 +9,7 @@ const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 ffmpeg.setFfmpegPath(ffmpegPath);
 const Video = require('../models/Video');
 const User = require('../models/User');
-const { getInteractions, makeRecommendations } = require('./recremmended');
+const { makeUserRecommendations, makeVideoRecommendations } = require('../workers/recremmended');
 const mongoose = require('mongoose');
 
 // const client = createClient();
@@ -26,9 +26,8 @@ mongoose.connect('mongodb://localhost:27017/milestone-1', {
 });
 
 router.post('/videos', async (req, res) => {
-  const { count} = req.body;
+  const { count, videoId} = req.body;
   const userId = req.session.userId;
-  // // PLEASE READ add ml library, im just editing the format of the json
 
   // // Unique request ID to track this specific recommendation request
   // const requestId = uuidv4();
@@ -68,14 +67,58 @@ router.post('/videos', async (req, res) => {
   //       "likevalues": video["like"]
   //   }
 
-  const recommendedVideos = await makeRecommendations(userId, count);
+// CAN DELETE:
+try
+{
+    let videos = await Video.findOne({});
+    if (videos == null)
+    {
+        return res.json({status: 'OK', videos: {}});
+    }
+  }
+  catch (err)
+  {
+    return res.status(200).json({ status: 'ERROR', error: true, message: err.message });
+  }
+// CAN DELETE ^
+
+
+  if (videoId != null)
+  {
+    const recommendedVideoIds = await makeVideoRecommendations(videoId, count);
+    try
+    {
+      let user = await User.findById(userId);
+      const videos = [];
+      for (let i = 0; i < recommendedVideoIds.length; i++)
+      {
+        let video = await Video.findById(recommendedVideoIds[i].itemId);
+        let videoData = {
+          id: video._id,
+          description: video.description,
+          title: video.title,
+          watched: user.watched.includes(video._id),
+          liked: user.liked.includes(video._id),
+          likevalues: video.like
+        }
+        videos.push(videoData);
+      }
+      return res.json({ status: 'OK', videos: videos });
+    }
+    catch (err)
+    {
+      return res.status(200).json({ status: 'ERROR', error: true, message: err.message });
+    }
+  }
+
+  const recommendedVideos = await makeUserRecommendations(userId, count);
   try
   {
+    let user = await User.findById(userId);
     const videos = [];
     for (let i = 0; i < recommendedVideos.length; i++)
     {
       let video = await Video.findById(recommendedVideos[i].itemId);
-      let user = await User.findById(userId);
       let videoData = {
         id: video._id,
         description: video.description,

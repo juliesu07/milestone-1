@@ -96,5 +96,5 @@ app.use('/api', checkSessionVideos, uploadRoutes);
 
 // Start the server
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server is running on https://localhost:${PORT}`);
 });

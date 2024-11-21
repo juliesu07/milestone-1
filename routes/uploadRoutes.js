@@ -1,88 +1,88 @@
-// routes/uploadRoutes.js
 const express = require('express');
-const mongoose = require('mongoose');
-const multer = require('multer');
+const formidable = require('formidable');
+const redis = require('redis');
+const fs = require('fs');
 const path = require('path');
 const Video = require('../models/Video');
 const User = require('../models/User');
-const fs = require('fs');
-const { v4: uuidv4 } = require('uuid');
-const ffmpegPath = require('ffmpeg-static');
-const ffmpeg = require('fluent-ffmpeg');
+const mongoose = require('mongoose');
+
 const router = express.Router();
 
-// Set FFmpeg binary path
-ffmpeg.setFfmpegPath(ffmpegPath);
+// Create Redis client
+const client = redis.createClient({ host: 'localhost', port: 6379 });
 
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, path.resolve(__dirname, '..', 'videos'));  // Ensure path resolves correctly
-    },
-    filename: function (req, file, cb) {
-        // Create a unique filename using the UUID
-        cb(null, `${uuidv4()}${path.extname(file.originalname)}`);
-    }
-});
+client.on('error', (err) => { console.error('Error connecting to Redis:', err); });
 
-// Define file type limits for safety
-const upload = multer({ 
-    storage: storage,
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = ['video/mp4'];  // Add any other types you want to support
-        if (!allowedTypes.includes(file.mimetype)) { return cb(new Error('Invalid file type, only MP4')); }
-        cb(null, true);
-    }
-}).single('mp4File');
+// Ensure Redis is connected
+client.connect();
 
-router.use(express.json());
+router.post('/upload', async (req, res) => {
+  const form = new formidable.IncomingForm();
+  form.parse(req, (err, fields, files) => {
+    if (err) { return res.status(200).json({ status: 'ERROR', error: true, message: err.message }); }
 
-// Route to handle video upload
-router.post('/upload', upload, async (req, res) => {
-    const { author, title } = req.body;
+    // Extract data from the request
+    const { author, title, description } = fields;
+    const mp4File = files.mp4File[0];
     const userId = req.session.userId;
+    
+    // Generate a unique ID for this upload
+    const customId = new mongoose.Types.ObjectId();
 
-    if (!req.file || !author || !title) {
-        return res.status(200).json({ status: 'ERROR', error: true, message: 'Missing required fields (author, title, or video file)' });
-    }
+    // Enqueue the upload task in Redis
+    const uploadTask = {
+      id: customId,
+      userId,
+      author,
+      title,
+      description,
+      mp4FilePath: mp4File.filepath, // Temporary path before saving permanently
+    };
 
-    try {
-        // Create the video document in the database with a 'processing' status
-        const count = await Video.countDocuments();
-        const video = new Video({
-            title: title,
-            description: author,
-            status: 'processing',  // Default status
-            index: count
-        });
-        
-        // Save video document to database
-	    res.status(200).send({ status: 'OK', id: video._id });
-        await video.save();
-        
-
-        // Background operations for renaming and processing video
-        const newFileName = `${video._id}${path.extname(req.file.originalname)}`;
-        const oldFilePath = path.join(__dirname, '..', 'videos', req.file.filename);
-        const newFilePath = path.join(__dirname, '..', 'videos', newFileName);
-
-        fs.rename(oldFilePath, newFilePath, (err) => {
-            if (err) {
-                console.error('Error renaming file:', err);
-                return;
-            }
-            // Start background processing after renaming
-            backgroundProcessVideo(newFilePath, video._id, res);
-        });
-
-        // Update user document with the video ID
-        await User.findByIdAndUpdate(userId, { $push: { videos: video._id } });
-
-    } catch (error) {
-        console.error(error);
-        res.status(200).json({ status: 'ERROR', error: true, message: error.message });
-    }
+    client.rpush('uploadQueue', JSON.stringify(uploadTask), (err, reply) => {
+      if (err) { res.status(200).json({ status: 'ERROR', error: true, message: err.message }); }
+      res.status(200).json({ id: uploadId }); // Respond with the unique upload ID immediately
+    });
+  });
 });
 
+// Process the upload queue asynchronously
+async function processQueue() {
+  while (true) {
+    const task = await client.lpop('uploadQueue');
+
+    if (task) {
+      const uploadTask = JSON.parse(task);
+      const { id, userId, author, title, description, mp4FilePath } = uploadTask;
+
+      const video = new Video({
+        _id: id,
+        author,
+        title,
+        description,
+        status: 'processing',
+      });
+
+      await video.save();
+      await User.findByIdAndUpdate(userId, { $push: { videos: id } });
+
+      // Define where to save the video file
+      const destinationPath = path.join(__dirname, 'videos', `${id}.mp4`);
+
+      // Ensure the uploads directory exists by creating it if not
+      if (!fs.existsSync(path.dirname(destinationPath))) { fs.mkdirSync(path.dirname(destinationPath), { recursive: true }); }
+
+      // Simulate persisting the upload (copying file from temporary location to destination)
+      fs.copyFile(mp4FilePath, destinationPath, (err) => {
+        if (err) { console.error(`Error saving file for upload ID ${id}:`, err); } 
+        else { console.log(`File successfully saved for upload ID ${id}`); }
+      });
+
+      backgroundProcessVideo(destinationPath, id);
+    }
+  }
+}
 
 // Background function to handle video processing and status update
 async function backgroundProcessVideo(filePath, videoId, res) {
@@ -97,7 +97,7 @@ async function backgroundProcessVideo(filePath, videoId, res) {
       await Video.findByIdAndUpdate(videoId, { status: 'complete' });
       console.log(`Video ${videoId} processed and status updated to complete`);
   } catch (error) {
-      res.status(200).json({ status: 'ERROR', error:true, message: error.message });
+      console.error(`Error processing ID ${id}:`, error.message);
   }
 }
 
@@ -127,14 +127,9 @@ async function processVideo(inputPath, videoId) {
               }
           }
       ]).outputOptions([
-          '-map', '0:v', '-b:v:0', '254k', '-s:v:0', '320x180',
-          '-map', '0:v', '-b:v:1', '507k', '-s:v:1', '320x180',
-          '-map', '0:v', '-b:v:2', '759k', '-s:v:2', '480x270',
-          '-map', '0:v', '-b:v:3', '1013k', '-s:v:3', '640x360',
-          '-map', '0:v', '-b:v:4', '1254k', '-s:v:4', '640x360',
-          '-map', '0:v', '-b:v:5', '1883k', '-s:v:5', '768x432',
-          '-map', '0:v', '-b:v:6', '3134k', '-s:v:6', '1024x576',
-          '-map', '0:v', '-b:v:7', '4952k', '-s:v:7', '1280x720',
+          '-map', '0:v', '-b:v:0', '512k', '-s:v:0', '640x360',
+          '-map', '0:v', '-b:v:1', '768k', '-s:v:1', '960x540',
+          '-map', '0:v', '-b:v:2', '1024k', '-s:v:2', '1280x720',
           '-f', 'dash',
           '-seg_duration', '10',
           '-use_template', '1',
@@ -180,5 +175,8 @@ async function generateThumbnail(inputPath, videoId) {
             .run();
     });
 }
+
+// Start processing the queue in the background
+processQueue();
 
 module.exports = router;

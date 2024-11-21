@@ -1,0 +1,128 @@
+const path = require('path');
+const fs = require('fs');
+const redis = require('redis');
+const Video = require('../models/Video');
+const ffmpeg = require('fluent-ffmpeg');
+
+const redisClient = redis.createClient({
+    url: 'redis://localhost:6379'
+});
+
+async function connectRedis() {
+    await redisClient.connect(); // Ensure Redis is connected
+    console.log('Connected to Redis');
+}
+
+async function processQueue() {
+    while (true) {
+        try {
+            // Wait for a job from Redis using the xRead method (for blocking)
+            const jobData = await redisClient.blPop('video_upload_queue', 0); // Use blPop for blocking list pop
+            const job = JSON.parse(jobData[1]); // jobData[1] is the actual job data
+
+            const { videoId, tempFilePath, fileName } = job;
+            const uploadDir = path.resolve(__dirname, '..', 'videos');
+            const finalFilePath = path.join(uploadDir, fileName);
+
+            // Process video and generate thumbnail
+            await Promise.all([
+                processVideo(finalFilePath, videoId),
+                generateThumbnail(finalFilePath, videoId),
+            ]);
+
+            // Update video status in the database
+            await Video.findByIdAndUpdate(videoId, { status: 'complete' });
+            console.log(`Processed video ${videoId}`);
+        } catch (error) {
+            console.error('Error processing job:', error);
+        }
+    }
+}
+
+// Function to process video into multiple resolutions using FFmpeg
+async function processVideo(inputPath, videoId) {
+  return new Promise((resolve, reject) => {
+      const outputDir = path.resolve(__dirname, '..', 'media');
+      const outputPath = path.join(outputDir, `${videoId}.mpd`);
+
+      // Set up the FFmpeg command to generate the DASH (adaptive bitrate) streams
+      ffmpeg(inputPath).videoFilters([
+          {
+              filter: 'scale',
+              options: {
+                  w: 'if(gt(iw/ih,16/9),min(1280,iw),-2)',
+                  h: 'if(gt(iw/ih,16/9),-2,min(720,ih))'
+              }
+          },
+          {
+              filter: 'pad',
+              options: {
+                  w: '1280',
+                  h: '720',
+                  x: '(1280-iw*min(1280/iw\,720/ih))/2',
+                  y: '(720-ih*min(1280/iw\,720/ih))/2',
+                  color: 'black'
+              }
+          }
+      ]).outputOptions([
+          '-map', '0:v', '-b:v:0', '254k', '-s:v:0', '320x180',
+          '-map', '0:v', '-b:v:1', '507k', '-s:v:1', '320x180',
+          '-map', '0:v', '-b:v:2', '759k', '-s:v:2', '480x270',
+          '-map', '0:v', '-b:v:3', '1013k', '-s:v:3', '640x360',
+          '-map', '0:v', '-b:v:4', '1254k', '-s:v:4', '640x360',
+          '-map', '0:v', '-b:v:5', '1883k', '-s:v:5', '768x432',
+          '-map', '0:v', '-b:v:6', '3134k', '-s:v:6', '1024x576',
+          '-map', '0:v', '-b:v:7', '4952k', '-s:v:7', '1280x720',
+          '-f', 'dash',
+          '-seg_duration', '10',
+          '-use_template', '1',
+          '-use_timeline', '1',
+          '-adaptation_sets', 'id=0,streams=v',
+          '-init_seg_name', `${videoId}_init_$RepresentationID$.m4s`,
+          '-media_seg_name', `${videoId}_chunk_$Bandwidth$_$Number$.m4s`
+      ]).on('end', () => {
+          console.log('Video processing complete');
+          resolve();
+      }).on('error', (err) => {
+          console.error('Error processing video:', err);
+          reject(err);
+      })
+      .save(outputPath);
+  });
+}
+
+async function generateThumbnail(inputPath, videoId) {
+    return new Promise((resolve, reject) => {
+        const thumbnailDir = path.resolve(__dirname, '..', 'thumbnails');
+        const thumbnailPath = path.join(thumbnailDir, `${videoId}.jpg`);
+
+        const THUMBNAIL_WIDTH = 320;
+        const THUMBNAIL_HEIGHT = 180;
+
+        ffmpeg(inputPath)
+            .on('end', () => {
+                console.log(`Thumbnail generated at ${thumbnailPath}`);
+                resolve(thumbnailPath);
+            })
+            .on('error', (err) => {
+                console.error('Error generating thumbnail:', err);
+                reject(err);
+            })
+            .output(thumbnailPath)
+            .outputOptions([
+                `-vf`,
+                `scale='if(gt(iw/ih,${THUMBNAIL_WIDTH}/${THUMBNAIL_HEIGHT}),${THUMBNAIL_WIDTH},-1)':'if(gt(iw/ih,${THUMBNAIL_WIDTH}/${THUMBNAIL_HEIGHT}),-1,${THUMBNAIL_HEIGHT})',` +
+                `pad=${THUMBNAIL_WIDTH}:${THUMBNAIL_HEIGHT}:(ow-iw)/2:(oh-ih)/2`
+            ])
+            .frames(1)
+            .run();
+    });
+}
+
+// Connect to Redis before starting the queue processing
+async function start() {
+    await connectRedis();
+    processQueue();
+}
+
+start();

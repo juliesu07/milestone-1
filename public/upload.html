@@ -7,9 +7,10 @@
 </head>
 <body>
     <h1>Upload Video</h1>
-    <form id="uploadForm" action="http://130.245.136.220/api/upload" method="POST" enctype="multipart/form-data">
+    <form id="uploadForm" action="/api/upload" method="POST" enctype="multipart/form-data">
         <input type="text" name="author" placeholder="Author" required>
         <input type="text" name="title" placeholder="Video Title" required>
+        <input type="text" name="description" placeholder="Description" required>
         <input type="file" name="mp4File" accept="video/mp4" id="videoInput" required>        
         <button type="submit">Upload Video</button>
     </form>

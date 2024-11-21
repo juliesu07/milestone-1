@@ -24,7 +24,7 @@ router.post('/adduser', async (req, res) => {
 
     // Create a new user
     const count = await User.countDocuments();
-    const user = new User({ username, password, email, index: count});
+    const user = new User({ username, password, email });
     await user.save();
 
     // Send verification email
