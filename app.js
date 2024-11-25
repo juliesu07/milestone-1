@@ -14,6 +14,13 @@ const Video = require('./models/Video');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const fs = require('fs');
+const client = require('prom-client');
+
+client.collectDefaultMetrics();
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', client.register.contentType);
+  res.end(await client.register.metrics());
+});
 
 // MongoDB connection
 //mongoose.connect('mongodb://130.245.136.220:27017/milestone-1')
@@ -86,6 +93,9 @@ app.get('/play/:id', (req, res) => {
 });
 app.get('/upload', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'upload.html'));
+});
+app.get('/test', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'test.html'));
 });
 
 // Routes

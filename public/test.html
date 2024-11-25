@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POST Request Demo</title>
+</head>
+<body>
+  <h1>POST Request Demo</h1>
+  <button id="fetch-button">Fetch Videos</button>
+  <pre id="response-output" style="white-space: pre-wrap; background: #f4f4f4; padding: 10px; border: 1px solid #ddd; margin-top: 10px;"></pre>
+
+  <script>
+    document.getElementById('fetch-button').addEventListener('click', async () => {
+      const outputElement = document.getElementById('response-output');
+      outputElement.textContent = 'Loading...';
+
+      try {
+        const response = await fetch('/api/videos', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ videoId: '673fd0798d9bbd146821d42b', count: 10 }) // Replace with actual data if needed
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        outputElement.textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        console.error(error);
+        outputElement.textContent = `Error: ${error.message}`;
+      }
+    });
+  </script>
+</body>
+</html>

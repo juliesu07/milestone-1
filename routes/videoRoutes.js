@@ -71,6 +71,7 @@ router.post('/videos', async (req, res) => {
 try
 {
     let videos = await Video.findOne({});
+    console.log(videos);
     if (videos == null)
     {
         return res.json({status: 'OK', videos: {}});
@@ -85,7 +86,7 @@ try
 
   if (videoId != null)
   {
-    const recommendedVideoIds = await makeVideoRecommendations(videoId, count);
+    const recommendedVideoIds = await makeVideoRecommendations(videoId, userId, count);
     try
     {
       let user = await User.findById(userId);

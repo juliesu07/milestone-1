@@ -179,8 +179,9 @@
             videoItem.appendChild(buttonsContainer);
 
             document.getElementById('videoList').appendChild(videoItem);
-            //console.log(videoId);
+            console.log(videoId);
             const mediaUrl = `/media/${videoId}.mpd`;
+            console.log(mediaUrl);
             const player = dashjs.MediaPlayer().create();
             player.initialize(videoElement, mediaUrl, false);
 

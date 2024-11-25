@@ -17,6 +17,8 @@ async function getInteractions() {
     const interactions = [];
 
     for (let i = 0; i < users.length; i++) {
+        console.log(users[i].username);
+        console.log(users[i].liked.length);
         for (let y = 0; y < users[i].liked.length; y++) {
             const video = await Video.findById(users[i].liked[y]);
             let interaction = {
@@ -37,6 +39,7 @@ async function getInteractions() {
             interactions.push(interaction);
         }
     }
+    console.log(interactions);
     return interactions;
 }
 
@@ -76,13 +79,13 @@ async function makeUserRecommendations(id, count) {
     const watchedItemIds = new Set(user.watched.map(video => video._id.toString()));
     const likedItemIds = new Set(user.liked.map(video => video._id.toString()));
     var recommendations = recommendationsFromMl;
-    console.log("before");
-    console.log(recommendations);
+    // console.log("before");
+    // console.log(recommendations);
     const recFiltered = recommendations.filter((item) => !watchedItemIds.has(item.itemId));
 
-    console.log(recommendations);
+    // console.log(recommendations);
     recommendations = recFiltered;
-    console.log(recFiltered);
+    // console.log(recFiltered);
     
     if (recommendations.length < count)
     {
@@ -101,12 +104,14 @@ async function makeUserRecommendations(id, count) {
     return recommendations;
 }
 
-async function makeVideoRecommendations(id, count) {
+async function makeVideoRecommendations(videoId, userId, count) {
     // Dynamically import Recommender from disco-rec
     const { Recommender } = await import('disco-rec');
-
+    console.log("count is " + count);
+    console.log("video id " + videoId);
+    console.log("user id " + userId);
     const videos = await Video.find({});
-    const user = await User.findById(id);
+    const user = await User.findById(userId);
 
     // Fetch all interactions
     const interactions = await getInteractions();
@@ -134,17 +139,48 @@ async function makeVideoRecommendations(id, count) {
         return getRandomUnwatchedVideos(excludedIds, count);
     }
 
+
+    const fillRecommendationsWithLikedUnwatchedIds = (recommendations, likedUnwatchedIds, count) => {
+        // Convert recom to an array for easier iteration
+        const likedUnwatchedIdsArray = [...likedUnwatchedIds];
+        
+        for (let id of likedUnwatchedIdsArray) {
+            if (recommendations.length >= count) break; // Stop if we've reached the desired size
+            notDuplicate = true;
+
+            for (let items of recommendations) { if (id == items.itemId) { notDuplicate = false; } }
+
+            if (notDuplicate) recommendations.push({ itemId: id, score: 0 });
+        }
+    };
+
     // Train the recommender
     const recommender = new Recommender();
     recommender.fit(interactions);
 
     // Get recommendations from ML model
-    let recommendations = recommender.similarItems(id, count);
-
+    let recommendations = recommender.itemRecs(videoId, count);
+    
+    console.log("these are the recommendations: ");
+    console.log(recommendations);
+    
     // Filter out watched videos
     const watchedItemIds = new Set(user.watched.map(video => video._id.toString()));
+    const likedItemIds = new Set(user.liked.map(video => video._id.toString()));
+    const likedUnwatchedItemIds = new Set([...likedItemIds].filter(id => !watchedItemIds.has(id)));
+
+    // console.log(likedItemIds);
     const recommendedItemIds = new Set(recommendations.map(rec => rec.itemId.toString()));
+    
+    // This is to filter shit please remember ty
     recommendations = recommendations.filter(item => !watchedItemIds.has(item.itemId));
+    console.log("these are the unwatched recommendations: ");
+    console.log(recommendations);
+    
+    // This fills in with liked unwatched videos by the users
+    fillRecommendationsWithLikedUnwatchedIds(recommendations, likedUnwatchedItemIds, count);
+    console.log("these are the filledUnwatched recommendations: ");
+    console.log(recommendations);
 
     // If we still need more recommendations, add random ones
     if (recommendations.length < count) {
@@ -156,12 +192,19 @@ async function makeVideoRecommendations(id, count) {
         recommendations = recommendations.concat(additionalRecommendations);
     }
 
+    console.log("sent to grading script: ");
+    console.log(recommendations);
+
     return recommendations;
 }
 
+// (async () => {
+//     const recommendations = await makeVideoRecommendations('673fd0788d9bbd146821d2c6', '674002801088cb6f7947367c', 10);
+//     console.log("Recommendations:", recommendations);
+// })();
 
 module.exports = {
     getInteractions,
     makeUserRecommendations,
     makeVideoRecommendations
-  };
+};

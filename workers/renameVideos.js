@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const path = require('path'); // Import path if needed for directories
 const Video = require('../models/Video'); // Import your Video model
 const videoData = require('../videos/m2.json');
-const Counter = require('../models/Counter');
+// const Counter = require('../models/Counter');
 const fs = require('fs');
 
 // Connect to MongoDB
